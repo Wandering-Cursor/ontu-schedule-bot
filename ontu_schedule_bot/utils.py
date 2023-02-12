@@ -103,6 +103,38 @@ class Getter(BaseRequester):
             )
         return groups
 
+    def get_all_chats(
+            self
+    ) -> list[classes.Chat]:
+        response = self.make_request(
+            endpoint=Endpoints.CHATS_ALL.value
+        )
+
+        answer: list[dict] = response.json()
+        chat_list: list[classes.Chat] = []
+        for group in answer:
+            chat_list.append(
+                classes.Chat.from_json(
+                    group
+                )
+            )
+        return chat_list
+
+    def get_schedule(
+            self,
+            group: classes.Group
+    ) -> classes.Schedule:
+        response = self.make_request(
+            endpoint=Endpoints.SCHEDULE_GET.value,
+            json={
+                'group': group.name,
+                'faculty': group.faculty.name
+            }
+        )
+
+        answer: dict = response.json()
+        return classes.Schedule.from_json(answer)
+
 
 class Setter(BaseRequester):
     """A class for updating/writing data to admin"""

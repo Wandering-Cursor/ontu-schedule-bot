@@ -10,6 +10,10 @@ class Endpoints(Enum):
     CHAT_CREATE = "/chat_create"
     CHAT_UPDATE = "/chat_update"
 
+    CHATS_ALL = "/chats_all"
+
     FACULTIES_GET = "/faculties_get"
 
     GROUPS_GET = "/groups_get"
+
+    SCHEDULE_GET = "/schedule_get"

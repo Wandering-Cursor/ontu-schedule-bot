@@ -1,15 +1,22 @@
+"""Imports for classes"""
 from .base import BaseClass
 from .chat import Chat
 from .faculty import Faculty
 from .group import Group
-# from .schedule import Schedule
+from .lesson import Lesson
+from .pair import Pair
+from .schedule import Schedule
 from .subscription import Subscription
+from .teacher import Teacher
 
 __all__ = [
     "BaseClass",
     "Chat",
     "Faculty",
     "Group",
-    # "Schedule",
+    "Lesson",
+    "Pair",
+    "Schedule",
     "Subscription",
+    "Teacher",
 ]

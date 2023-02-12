@@ -154,7 +154,18 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
     if not job:
         return
 
-    await context.bot.send_message(
-        253742276,
-        text=f"Checked pair for: {job.data}"
-    )
+    all_chats = utils.Getter().get_all_chats()
+    for chat in all_chats:
+        if not chat.subscription:
+            continue
+        schedule = utils.Getter().get_schedule(
+            chat.subscription.group
+        )
+        next_pair = schedule.get_next_pair()
+        if not next_pair.lessons:
+            print("No lessons per pair")
+            continue
+        await context.bot.send_message(
+            chat.chat_id,
+            f"{next_pair.get_text()}"
+        )

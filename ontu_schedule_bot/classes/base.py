@@ -40,3 +40,13 @@ class BaseClass:
         raise NotImplementedError(
             "`from_json` method must be implemented"
         )
+
+
+pair_times = [
+    {"hour": 8, "minute": 0},
+    {"hour": 9, "minute": 30},
+    {"hour": 11, "minute": 30},
+    {"hour": 13, "minute": 0},
+    {"hour": 14, "minute": 30},
+    {"hour": 16, "minute": 0},
+]
