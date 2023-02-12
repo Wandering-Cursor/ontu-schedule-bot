@@ -1,6 +1,6 @@
 """This module defines faculty class"""
 
-from base import BaseClass
+from classes.base import BaseClass
 
 class Faculty(BaseClass):
     """Faculty - An object on Rozklad site with a name, has some groups"""

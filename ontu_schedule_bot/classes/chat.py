@@ -1,8 +1,8 @@
 """This module contains chat classes"""
 
-from base import BaseClass
+from classes.base import BaseClass
 
-from subscription import Subscription
+from classes.subscription import Subscription
 
 class Chat(BaseClass):
     """Describes a chat with a subscription for schedule"""

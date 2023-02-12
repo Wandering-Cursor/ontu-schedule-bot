@@ -1,0 +1,48 @@
+"""This file contains models for admin page"""
+from django.db import models
+from django.utils import timezone
+
+
+class BaseModel(models.Model):
+    """This class describes a base model with id, created and updated fields"""
+    id = models.UUIDField()
+    created = models.DateTimeField()
+    updated = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        now = timezone.now()
+        if not self.created:
+            self.created = now
+        self.updated = now
+        return super().save(*args, **kwargs)
+
+
+class Faculty(BaseModel):
+    """Defines a faculty in ONTU"""
+    name = models.TextField()
+
+
+class RozkladGroup(BaseModel):
+    """Defines a group of some Faculty in ONTU"""
+    faculty = models.ForeignKey(
+        to=Faculty,
+        on_delete=models.CASCADE
+    )
+    name = models.TextField()
+
+
+class TelegramGroup(BaseModel):
+    """Defines a Telegram Group, to which users may add watcher for schedule"""
+    name = models.TextField()
+    associated_group = models.ForeignKey(
+        to=RozkladGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    group_id = models.BigIntegerField(null=True)
+    group_info = models.JSONField(
+        null=True,
+        blank=True
+    )

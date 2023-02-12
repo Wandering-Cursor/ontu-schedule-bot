@@ -47,7 +47,10 @@ class BaseRequester:
 class Getter(BaseRequester):
     """Class that handles getting and sending messages to admin server"""
 
-    def get_chat(self, user_id: int):
+    def get_chat(
+            self,
+            user_id: int
+        ) -> classes.Chat|None:
         """Method to get information about a user"""
         response = self.make_request(
             endpoint=Endpoints.CHAT_INFO.value,
@@ -61,7 +64,9 @@ class Getter(BaseRequester):
             return None
         return classes.Chat.from_json(json_dict=answer)
 
-    def get_faculties(self):
+    def get_faculties(
+            self
+        ) -> list[classes.Faculty]:
         """Method to get a list of faculties"""
         response = self.make_request(
             endpoint=Endpoints.FACULTIES_GET.value
@@ -77,7 +82,10 @@ class Getter(BaseRequester):
             )
         return faculties
 
-    def get_groups(self, faculty_name: str):
+    def get_groups(
+            self,
+            faculty_name: str
+        ) -> list[classes.Group]:
         response = self.make_request(
             endpoint=Endpoints.GROUPS_GET.value,
             json={
@@ -99,7 +107,10 @@ class Getter(BaseRequester):
 class Setter(BaseRequester):
     """A class for updating/writing data to admin"""
 
-    def new_chat(self, chat: telegram.Chat) -> classes.Chat|dict|None:
+    def new_chat(
+            self,
+            chat: telegram.Chat
+        ) -> classes.Chat|dict|None:
         """Creates a new chat, returns response from server"""
         response = self.make_request(
             endpoint=Endpoints.CHAT_CREATE.value,
@@ -112,6 +123,29 @@ class Setter(BaseRequester):
         answer: dict = response.json()
         if answer.get('status', '') == Statuses.OK.value:
             return Getter().get_chat(chat.id)
+        return answer
+
+    def set_chat_group(
+            self,
+            chat: telegram.Chat,
+            group: classes.Group
+        ) -> classes.Subscription|dict:
+        """Updates subscription info for chat"""
+        response = self.make_request(
+            endpoint=Endpoints.CHAT_UPDATE.value,
+            json={
+                "chat_id": chat.id,
+                "group": {
+                    "name": group.name,
+                    "faculty": group.faculty.name
+                },
+                "is_active": True,
+            }
+        )
+
+        answer: dict = response.json()
+        if answer.pop('status', '') == Statuses.OK.value:
+            return classes.Subscription.from_json(answer)
         return answer
 
 # endregion

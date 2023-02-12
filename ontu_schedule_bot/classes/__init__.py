@@ -1,9 +1,9 @@
-from base import BaseClass
-from chat import Chat
-from faculty import Faculty
-from group import Group
-# from schedule import Schedule
-from subscription import Subscription
+from .base import BaseClass
+from .chat import Chat
+from .faculty import Faculty
+from .group import Group
+# from .schedule import Schedule
+from .subscription import Subscription
 
 __all__ = [
     "BaseClass",
@@ -11,5 +11,5 @@ __all__ = [
     "Faculty",
     "Group",
     # "Schedule",
-    "Subscription"
+    "Subscription",
 ]

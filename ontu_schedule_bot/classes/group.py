@@ -1,8 +1,8 @@
 """This module defines group class"""
 
-from base import BaseClass
+from classes.base import BaseClass
 
-from faculty import Faculty
+from classes.faculty import Faculty
 
 class Group(BaseClass):
     """A class that defines some group in schedule"""
