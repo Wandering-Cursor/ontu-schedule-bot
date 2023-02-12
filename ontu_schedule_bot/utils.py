@@ -4,7 +4,6 @@ import requests
 from secret_config import API_URL
 from enums import Statuses, Endpoints
 
-
 import classes
 
 import telegram
@@ -33,8 +32,10 @@ class BaseRequester:
                 "Please don't override method with non str/bytes"
             )
 
+        url = urljoin(self._url, endpoint)
+
         response = self.session.request(
-            url=urljoin(self._url, endpoint),
+            url=url,
             method=method,
             data=kwargs.pop('data', None),
             json=kwargs.pop('json', None),
@@ -49,13 +50,13 @@ class Getter(BaseRequester):
 
     def get_chat(
             self,
-            user_id: int
-        ) -> classes.Chat|None:
+            chat_id: int
+            ) -> classes.Chat | None:
         """Method to get information about a user"""
         response = self.make_request(
             endpoint=Endpoints.CHAT_INFO.value,
             json={
-                'user_id': user_id
+                'chat_id': chat_id
             }
         )
 

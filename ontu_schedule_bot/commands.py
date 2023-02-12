@@ -12,9 +12,13 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not update.message:
         return
 
-    chat_entity = utils.Getter().get_chat(
-        telegram_chat.id
-    )
+    chat_entity = None
+    try:
+        chat_entity = utils.Getter().get_chat(
+            telegram_chat.id
+        )
+    except ValueError as error:
+        print(error)
     if not chat_entity:
         chat_entity = utils.Setter().new_chat(
             chat=telegram_chat

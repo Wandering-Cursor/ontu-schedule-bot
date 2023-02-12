@@ -6,14 +6,14 @@ class Statuses(Enum):
 
 class Endpoints(Enum):
     """Contains all used endpoints"""
-    CHAT_INFO = "/chat_info"
-    CHAT_CREATE = "/chat_create"
-    CHAT_UPDATE = "/chat_update"
+    CHAT_INFO = "/api/chat_info"
+    CHAT_CREATE = "/api/chat_create"
+    CHAT_UPDATE = "/api/chat_update"
 
-    CHATS_ALL = "/chats_all"
+    CHATS_ALL = "/api/chats_all"
 
-    FACULTIES_GET = "/faculties_get"
+    FACULTIES_GET = "/api/faculties_get"
 
-    GROUPS_GET = "/groups_get"
+    GROUPS_GET = "/api/groups_get"
 
-    SCHEDULE_GET = "/schedule_get"
+    SCHEDULE_GET = "/api/schedule_get"
