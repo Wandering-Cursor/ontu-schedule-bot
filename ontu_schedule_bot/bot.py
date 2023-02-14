@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Start the bot"""
-    persistence = PicklePersistence(filepath="./ontu_schedule_bot_data")
+    persistence = PicklePersistence(filepath="persistance_cache")
 
     application = (
         Application.builder()
@@ -30,7 +30,6 @@ def main() -> None:
         .arbitrary_callback_data(True)
         .build()
     )
-    application = Application.builder().token(API_TOKEN).build()
 
     application.add_handler(
         CommandHandler(
@@ -53,7 +52,14 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(
             callback=commands.group_set,
-            pattern=patterns.set_group_pattern
+            pattern=patterns.pick_group_pattern
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            command="next_pair",
+            callback=commands.pair_check_per_chat
         )
     )
 
@@ -61,7 +67,7 @@ def main() -> None:
         logger.error("Application doesn't have job_queue")
         return
 
-    for time_kwargs in classes.base.pair_times:
+    for time_kwargs in classes.base.notification_times:
         application.job_queue.run_daily(
             commands.pair_check,
             time=datetime.time(
@@ -71,7 +77,6 @@ def main() -> None:
             days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
         )
 
-    # Run the bot until the user presses Ctrl-C
     application.run_polling()
 
 

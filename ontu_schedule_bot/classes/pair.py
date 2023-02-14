@@ -39,11 +39,12 @@ class Pair(BaseClass):
         return obj
 
     def get_text(self):
-        message = f"Пара №{self.pair_no}, початок о {pair_times[self.pair_index]}\n"
+        time = pair_times[self.pair_index]
+        message = f"Пара №{self.pair_no}, початок о {time['hour']}:{time['minute']}\n"
 
         for lesson in self.lessons:
             message += f"""
-                {lesson.full_name} - {lesson.date}\n
-                {lesson.teacher.short_name}\n
-            """
+{lesson.full_name} - {lesson.date}\n
+{lesson.teacher.short_name}\n
+"""
         return message

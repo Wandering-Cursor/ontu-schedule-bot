@@ -74,7 +74,7 @@ class Schedule(BaseClass):
         next_pair = None
 
         for pair in pairs_of_day:
-            if pair.pair_no == pair_no:
+            if pair.pair_index == pair_no:
                 next_pair = pair
                 break
 

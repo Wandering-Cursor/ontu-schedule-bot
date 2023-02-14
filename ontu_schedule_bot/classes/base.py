@@ -50,3 +50,12 @@ pair_times = [
     {"hour": 14, "minute": 30},
     {"hour": 16, "minute": 0},
 ]
+
+notification_times = [
+    {"hour": 7, "minute": 50},
+    {"hour": 9, "minute": 25},
+    {"hour": 11, "minute": 20},
+    {"hour": 12, "minute": 55},
+    {"hour": 14, "minute": 25},
+    {"hour": 15, "minute": 55},
+]

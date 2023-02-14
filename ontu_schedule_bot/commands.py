@@ -55,6 +55,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         ),
     )
 
+
 async def faculty_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     if not query or not query.message:
@@ -66,16 +67,20 @@ async def faculty_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     faculties = utils.Getter().get_faculties()
     for faculty in faculties:
         keyboard.append(
-            InlineKeyboardButton(
-                faculty.name,
-                callback_data=("pick_faculty", faculty.name)
-            )
+            [
+                InlineKeyboardButton(
+                    faculty.name,
+                    callback_data=("pick_faculty", faculty.name)
+                )
+            ]
         )
     keyboard.append(
-        InlineKeyboardButton(
-            "Відмінити",
-            callback_data=("cancel", )
-        )
+        [
+            InlineKeyboardButton(
+                "Відмінити",
+                callback_data=("cancel", )
+            )
+        ]
     )
 
     reply_markup = InlineKeyboardMarkup(
@@ -88,6 +93,7 @@ async def faculty_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         reply_markup=reply_markup
     )
     return 0
+
 
 async def group_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -109,17 +115,38 @@ async def group_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         faculty_name=data[faculty_name_index]
     )
     for group in groups:
-        keyboard.append(
-            InlineKeyboardButton(
-                group.name,
-                callback_data=("pick_group", group)
+        if len(keyboard) > 0 and len(keyboard[-1]) < 6:
+            keyboard[-1].append(
+                InlineKeyboardButton(
+                    group.name,
+                    callback_data=("pick_group", group)
+                )
             )
-        )
+        else:
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        group.name,
+                        callback_data=("pick_group", group)
+                    )
+                ]
+            )
     keyboard.append(
-        InlineKeyboardButton(
-            "Відмінити",
-            callback_data=("set_group", )
-        )
+        [
+            InlineKeyboardButton(
+                "Відмінити",
+                callback_data=("set_group", )
+            )
+        ]
+    )
+
+    reply_markup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard
+    )
+
+    await query.message.edit_text(
+        text="Тепер - оберіть групу",
+        reply_markup=reply_markup
     )
 
 
@@ -149,8 +176,51 @@ async def group_set(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
     await query.message.reply_html(
         "Відтепер ви будете отримувати розклад для групи: "
-        f"{group.name} факультету {group.faculty.name}"
+        f"{subscription.group.name} факультету {subscription.group.faculty.name}"
     )
+
+
+async def pair_check_for_group(chat: classes.Chat) -> str | bool | None:
+    """Returns None if chat has no sub, false if there's no pair, str if there's a pair"""
+    if not chat.subscription:
+        return None
+    schedule = utils.Getter().get_schedule(
+        chat.subscription.group
+    )
+    next_pair = schedule.get_next_pair()
+    if not next_pair.lessons:
+        print("No lessons per pair")
+        return False
+    return next_pair.get_text()
+
+
+async def pair_check_per_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.effective_chat or not update.message:
+        return
+
+    chat_id = update.effective_chat.id
+    chat = utils.Getter().get_chat(
+        chat_id=chat_id
+    )
+    if not chat or not chat.subscription:
+        await update.message.reply_text(
+            text="У вас немає підписки (Чи ви не в списку) - виправте це:\n/start"
+        )
+        return
+
+    next_pair_text = await pair_check_for_group(chat)
+    if next_pair_text is None:
+        await update.message.reply_text(
+            text="Не вдалося отримати наступну пару :(\nСпробуйте /start"
+        )
+    elif isinstance(next_pair_text, str):
+        await update.message.reply_text(
+            text=next_pair_text
+        )
+    elif next_pair_text is False:
+        await update.message.reply_text(
+            text="У вас немає наступної пари"
+        )
 
 
 async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -160,16 +230,10 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     all_chats = utils.Getter().get_all_chats()
     for chat in all_chats:
-        if not chat.subscription:
-            continue
-        schedule = utils.Getter().get_schedule(
-            chat.subscription.group
-        )
-        next_pair = schedule.get_next_pair()
-        if not next_pair.lessons:
-            print("No lessons per pair")
+        result = await pair_check_for_group(chat=chat)
+        if not result:
             continue
         await context.bot.send_message(
             chat.chat_id,
-            f"{next_pair.get_text()}"
+            f"{result}"
         )

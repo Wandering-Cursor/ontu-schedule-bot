@@ -21,11 +21,6 @@ class Lesson(BaseClass):
             required_params=required_params,
         )
 
-        date = parsed_params.pop('date')
-        date = datetime.date.fromtimestamp(
-            date
-        )
-
         teacher_params = parsed_params.pop(
             'teacher'
         )
@@ -39,5 +34,4 @@ class Lesson(BaseClass):
         obj.teacher = teacher
         obj.full_name = lesson_name.get('full_name', '')
         obj.short_name = lesson_name.get('short_name', '')
-        obj.date = date
         return obj

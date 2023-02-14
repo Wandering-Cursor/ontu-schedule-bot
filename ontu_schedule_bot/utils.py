@@ -154,7 +154,7 @@ class Setter(BaseRequester):
             }
         )
         answer: dict = response.json()
-        if answer.get('status', '') == Statuses.OK.value:
+        if answer.pop('status', '') == Statuses.OK.value:
             return Getter().get_chat(chat.id)
         return answer
 
