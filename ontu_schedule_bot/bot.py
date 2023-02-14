@@ -55,6 +55,12 @@ def main() -> None:
             pattern=patterns.pick_group_pattern
         )
     )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.start_command,
+            pattern=patterns.start_pattern
+        )
+    )
 
     application.add_handler(
         CommandHandler(

@@ -1,5 +1,6 @@
 from urllib.parse import urljoin
 import requests
+import math
 
 from secret_config import API_URL
 from enums import Statuses, Endpoints
@@ -182,3 +183,17 @@ class Setter(BaseRequester):
         return answer
 
 # endregion
+
+
+PAGE_SIZE = 10
+
+
+def get_number_of_pages(list_of_elements: list[object]) -> int:
+    return math.ceil(len(list_of_elements) / PAGE_SIZE)
+
+def get_current_page(list_of_elements: list[object], page: int = 0):
+
+    if len(list_of_elements) <= PAGE_SIZE:
+        return list_of_elements
+
+    return list_of_elements[page*PAGE_SIZE:(page+1)*PAGE_SIZE]

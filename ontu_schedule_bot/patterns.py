@@ -20,3 +20,10 @@ def pick_group_pattern(callback_data):
         if callback_data[0] == "pick_group" and callback_data[1]:
             return True
     return False
+
+
+def start_pattern(callback_data):
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "start":
+            return True
+    return False

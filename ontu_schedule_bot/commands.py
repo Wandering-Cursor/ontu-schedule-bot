@@ -9,8 +9,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     telegram_chat = update.effective_chat
     if not telegram_chat:
         return
-    if not update.message:
-        return
 
     chat_entity = None
     try:
@@ -48,12 +46,21 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             ]
         )
 
-    await update.message.reply_html(
-        "Чим можу допомогти?",
-        reply_markup=InlineKeyboardMarkup(
+    kwargs = {
+        "text": "Чим можу допомогти?",
+        "reply_markup": InlineKeyboardMarkup(
             inline_keyboard=keyboard
         ),
-    )
+    }
+
+    if update.callback_query and update.callback_query.message:
+        await update.callback_query.message.edit_text(
+            **kwargs
+        )
+    elif update.message:
+        await update.message.reply_html(
+            **kwargs
+        )
 
 
 async def faculty_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -77,8 +84,8 @@ async def faculty_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     keyboard.append(
         [
             InlineKeyboardButton(
-                "Відмінити",
-                callback_data=("cancel", )
+                "Назад ⤴️",
+                callback_data=("start", )
             )
         ]
     )
@@ -88,8 +95,8 @@ async def faculty_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
-    await query.message.reply_text(
-        f"Будь-ласка - оберіть факультет:",
+    await query.message.edit_text(
+        text=f"Будь-ласка - оберіть факультет:",
         reply_markup=reply_markup
     )
     return 0
@@ -99,44 +106,70 @@ async def group_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     query = update.callback_query
     if not query or not query.message:
         return
-    await query.answer()
+    await query.answer("Будь-ласка, зачекайте")
 
     if not query.data:
         return
 
-    data = tuple(query.data)
+    data: tuple[str, str, int] = tuple(query.data)  # type: ignore
     faculty_name_index = 1
+    page_index = 2
     if len(data) < faculty_name_index + 1:
         return
+
+    if len(data) < page_index + 1:
+        page: int = 0
+    else:
+        page: int = data[page_index]
 
     keyboard = []
 
     groups = utils.Getter().get_groups(
         faculty_name=data[faculty_name_index]
     )
-    for group in groups:
-        if len(keyboard) > 0 and len(keyboard[-1]) < 6:
-            keyboard[-1].append(
+    number_of_pages = utils.get_number_of_pages(
+        groups # type: ignore
+    )
+    current_page: list[classes.Group] = utils.get_current_page(
+        list_of_elements=groups,  # type: ignore
+        page=page
+    )
+    for group in current_page:
+        keyboard.append(
+            [
                 InlineKeyboardButton(
                     group.name,
                     callback_data=("pick_group", group)
                 )
-            )
-        else:
-            keyboard.append(
-                [
-                    InlineKeyboardButton(
-                        group.name,
-                        callback_data=("pick_group", group)
-                    )
-                ]
-            )
+            ]
+        )
+
+    back_list: list[str | int] = list(query.data)
+    forward_list: list[str | int] = list(query.data)
+
+    if len(query.data) > page_index:
+        back_list[2] = page - 1 if page - 1 >= 0 else 0
+        forward_list[2] = page + 1
+    else:
+        back_list.append(page)
+        forward_list.append(page+1)
+    back_tuple: tuple = tuple(back_list)
+    forward_tuple: tuple = tuple(forward_list)
+
     keyboard.append(
         [
             InlineKeyboardButton(
-                "Відмінити",
+                "◀️",
+                callback_data=back_tuple
+            ),
+            InlineKeyboardButton(
+                "Назад ⤴️",
                 callback_data=("set_group", )
-            )
+            ),
+            InlineKeyboardButton(
+                "▶️",
+                callback_data=forward_tuple
+            ),
         ]
     )
 
@@ -145,7 +178,7 @@ async def group_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
     await query.message.edit_text(
-        text="Тепер - оберіть групу",
+        text=f"Тепер - оберіть групу\nCторінка {page+1}/{number_of_pages}",
         reply_markup=reply_markup
     )
 
