@@ -142,7 +142,7 @@ class Schedule(BaseClass):
                     if pair.has_lessons:
                         next_pair = pair
                         break
-                    if find_all:
+                    if not find_all:
                         return None
             if self._check_should_stop(
                     next_pair=next_pair,
