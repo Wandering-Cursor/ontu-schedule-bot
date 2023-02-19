@@ -4,6 +4,8 @@ from classes.base import BaseClass
 from classes.teacher import Teacher
 
 import datetime
+import re
+
 
 class Lesson(BaseClass):
     date: datetime.date
@@ -11,6 +13,19 @@ class Lesson(BaseClass):
     full_name: str
     short_name: str
     lesson_info: str
+
+    @property
+    def formatted_lesson_info(self) -> str:
+        """Returns a nice looking lesson info"""
+        lesson_info = self.lesson_info.strip()
+        all_links: list[str] = re.findall(r'(https?://[^\s]+)', lesson_info)
+        i = 1
+        for link in all_links:
+            lesson_info = lesson_info.replace(
+                link,
+                f"<a href='{link}'>Посилання №{i}</a>"
+            )
+        return lesson_info
 
     @classmethod
     def from_json(cls, json_dict: dict):

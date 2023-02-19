@@ -3,6 +3,20 @@ from classes.base import BaseClass, pair_times
 
 from classes.lesson import Lesson
 
+MESSAGE_FORMAT = """
+Пара №{pair_no}, початок о {hour}:{minute} - {day_name}
+
+{lessons}
+"""
+
+LESSON_FORMAT = """
+{lesson_name} {lesson_date}
+{teacher_name}
+
+Картка:
+{lesson_info}
+"""
+
 
 class Pair(BaseClass):
     lessons: list[Lesson]
@@ -38,13 +52,30 @@ class Pair(BaseClass):
         obj.lessons = lessons
         return obj
 
-    def get_text(self):
+    @property
+    def has_lessons(self):
+        """Determines wether or not we should show this pair as active"""
+        return bool(self.lessons)
+
+    def get_text(self, day_name: str | None = None):
         time = pair_times[self.pair_index]
-        message = f"Пара №{self.pair_no}, початок о {time['hour']}:{time['minute']}\n"
+
+        lessons_string = ""
 
         for lesson in self.lessons:
-            message += f"""
-{lesson.full_name} - {lesson.date}\n
-{lesson.teacher.short_name}\n
-"""
+            lessons_string += LESSON_FORMAT.format(
+                lesson_name=lesson.full_name,
+                lesson_date=f"- {lesson.date}" if lesson.date else "",
+                teacher_name=lesson.teacher.short_name,
+                lesson_info=lesson.formatted_lesson_info
+            )
+            lessons_string += "\n"
+
+        message = MESSAGE_FORMAT.format(
+            pair_no=self.pair_no,
+            hour=str(time['hour']).zfill(2),
+            minute=str(time['minute']).zfill(2),
+            day_name=day_name or "",
+            lessons=lessons_string
+        )
         return message

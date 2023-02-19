@@ -220,11 +220,8 @@ async def pair_check_for_group(chat: classes.Chat) -> str | bool | None:
     schedule = utils.Getter().get_schedule(
         chat.subscription.group
     )
-    next_pair = schedule.get_next_pair()
-    if not next_pair.lessons:
-        print("No lessons per pair")
-        return False
-    return next_pair.get_text()
+    next_pair, day_name = schedule.get_next_pair()
+    return next_pair.get_text(day_name=day_name)
 
 
 async def pair_check_per_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -243,15 +240,15 @@ async def pair_check_per_chat(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     next_pair_text = await pair_check_for_group(chat)
     if next_pair_text is None:
-        await update.message.reply_text(
+        await update.message.reply_html(
             text="Не вдалося отримати наступну пару :(\nСпробуйте /start"
         )
     elif isinstance(next_pair_text, str):
-        await update.message.reply_text(
+        await update.message.reply_html(
             text=next_pair_text
         )
     elif next_pair_text is False:
-        await update.message.reply_text(
+        await update.message.reply_html(
             text="У вас немає наступної пари"
         )
 
