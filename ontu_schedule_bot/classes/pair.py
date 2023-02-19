@@ -19,6 +19,7 @@ LESSON_FORMAT = """
 
 
 class Pair(BaseClass):
+    """Pair class that keeps a list of lessons (because schedule is weird)"""
     lessons: list[Lesson]
     pair_no: int
 
@@ -26,6 +27,7 @@ class Pair(BaseClass):
 
     @property
     def pair_index(self):
+        """Returns pair_index (because pair_no starts from 1)"""
         return self.pair_no + self._pair_shift
 
     @classmethod
@@ -57,7 +59,8 @@ class Pair(BaseClass):
         """Determines wether or not we should show this pair as active"""
         return bool(self.lessons)
 
-    def get_text(self, day_name: str | None = None):
+    def as_text(self, day_name: str | None = None):
+        """Returns pair's representation to show in bot (may be HTML)"""
         time = pair_times[self.pair_index]
 
         lessons_string = ""

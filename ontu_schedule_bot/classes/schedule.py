@@ -1,10 +1,9 @@
 """Describes schedule"""
+import datetime
 
 from classes.base import BaseClass, pair_times
 
 from classes.pair import Pair
-
-import datetime
 
 
 MAX_PAIRS = 6
@@ -20,7 +19,8 @@ day_names = {
 }
 
 
-def next_pair_no_from_time(hour_minute_tuple: tuple[int, int]) -> int:
+def _next_pair_no_from_time(hour_minute_tuple: tuple[int, int]) -> int:
+    """Method that get's next pair_no based on time tuple (should not be raw used)"""
     i = 0
     hour = hour_minute_tuple[0]
     minute = hour_minute_tuple[1]
@@ -36,6 +36,15 @@ def next_pair_no_from_time(hour_minute_tuple: tuple[int, int]) -> int:
 
 
 class Schedule(BaseClass):
+    """
+        Schedule dataclass
+        Schedule keeps days (week to be precise)
+        Days keep pairs
+        Pairs - lessons
+
+        This class provides a method to get next pair
+        (and will provide a way to get a schedule for whole week later on)
+    """
     days: dict[str, list[Pair]]
 
     @classmethod
@@ -69,7 +78,7 @@ class Schedule(BaseClass):
             next_pair_no = pair_no + 1
 
         if hour_minute_tuple:
-            next_pair_no = next_pair_no_from_time(hour_minute_tuple)
+            next_pair_no = _next_pair_no_from_time(hour_minute_tuple)
 
         if next_pair_no is None:
             raise ValueError("Could not get_next_pair_index", pair_no, hour_minute_tuple)
@@ -94,6 +103,7 @@ class Schedule(BaseClass):
         day_no = self.__get_next_day(day_no=day_no)
         if day_no == initial_day_no:
             return True
+        return False
 
     def get_next_pair(
             self,
@@ -123,7 +133,7 @@ class Schedule(BaseClass):
             pairs_of_day = self.days.get(day_names.get(day_no, ""))
             if not pairs_of_day and not find_all:
                 return None
-            elif not pairs_of_day:
+            if not pairs_of_day:
                 day_no = self.__get_next_day(day_no=day_no)
                 pair_no = 0
                 continue

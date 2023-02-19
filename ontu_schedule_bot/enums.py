@@ -1,8 +1,11 @@
+"""This module contains some handy enumerators for bot"""
 from enum import Enum
+
 
 class Statuses(Enum):
     """Conains all statuses that backend may give"""
     OK = "ok"
+
 
 class Endpoints(Enum):
     """Contains all used endpoints"""
@@ -17,3 +20,7 @@ class Endpoints(Enum):
     GROUPS_GET = "/api/groups_get"
 
     SCHEDULE_GET = "/api/schedule_get"
+
+
+FACULTY_NAME_INDEX = 1
+PAGE_INDEX = 2

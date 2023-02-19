@@ -4,9 +4,10 @@ from telegram.ext import ContextTypes
 
 import utils
 import classes
+import enums
 
 
-async def start_command(update: Update) -> None:
+async def start_command(update: Update, _) -> None:
     """Executed when user initiates conversation, or returns to main menu"""
     telegram_chat = update.effective_chat
     if not telegram_chat:
@@ -65,7 +66,7 @@ async def start_command(update: Update) -> None:
         )
 
 
-async def faculty_select(update: Update) -> int:
+async def faculty_select(update: Update, _) -> int:
     """This command sends a list of faculties to choose for subscription"""
     query = update.callback_query
     if not query or not query.message:
@@ -105,7 +106,23 @@ async def faculty_select(update: Update) -> int:
     return 0
 
 
-async def group_select(update: Update) -> None:
+def _back_forward_buttons_get(
+        page: int,
+        query_data: list) -> tuple[tuple, tuple]:
+    """This method encapsulates logics to get forward and backwards buttons"""
+    back_list: list[str | int] = query_data
+    forward_list: list[str | int] = query_data
+
+    if len(query_data) > enums.PAGE_INDEX:
+        back_list[2] = page - 1 if page - 1 >= 0 else 0
+        forward_list[2] = page + 1
+    else:
+        back_list.append(page)
+        forward_list.append(page+1)
+    return tuple(back_list), tuple(forward_list)
+
+
+async def group_select(update: Update, _) -> None:
     """This command sends a list of groups of some faculty to choose for subscription"""
     query = update.callback_query
     if not query or not query.message:
@@ -116,23 +133,22 @@ async def group_select(update: Update) -> None:
         return
 
     data: tuple[str, str, int] = tuple(query.data)  # type: ignore
-    faculty_name_index = 1
-    page_index = 2
-    if len(data) < faculty_name_index + 1:
+
+    if len(data) < enums.FACULTY_NAME_INDEX + 1:
         return
 
-    if len(data) < page_index + 1:
+    if len(data) < enums.PAGE_INDEX + 1:
         page: int = 0
     else:
-        page: int = data[page_index]
+        page: int = data[enums.PAGE_INDEX]
 
     keyboard = []
 
     groups = utils.Getter().get_groups(
-        faculty_name=data[faculty_name_index]
+        faculty_name=data[enums.FACULTY_NAME_INDEX]
     )
     number_of_pages = utils.get_number_of_pages(
-        groups # type: ignore
+        groups  # type: ignore
     )
     current_page: list[classes.Group] = utils.get_current_page(
         list_of_elements=groups,  # type: ignore
@@ -148,17 +164,10 @@ async def group_select(update: Update) -> None:
             ]
         )
 
-    back_list: list[str | int] = list(query.data)
-    forward_list: list[str | int] = list(query.data)
-
-    if len(query.data) > page_index:
-        back_list[2] = page - 1 if page - 1 >= 0 else 0
-        forward_list[2] = page + 1
-    else:
-        back_list.append(page)
-        forward_list.append(page+1)
-    back_tuple: tuple = tuple(back_list)
-    forward_tuple: tuple = tuple(forward_list)
+    back_tuple, forward_tuple = _back_forward_buttons_get(
+        page=page,
+        query_data=list(data)
+    )
 
     keyboard.append(
         [
@@ -187,7 +196,7 @@ async def group_select(update: Update) -> None:
     )
 
 
-async def group_set(update: Update) -> None:
+async def group_set(update: Update, _) -> None:
     """This command activates a subscription"""
     if not update.effective_chat:
         return
@@ -237,10 +246,11 @@ async def pair_check_for_group(
     next_pair = data[0]
     day_name = data[1]
 
-    return next_pair.get_text(day_name=day_name)
+    return next_pair.as_text(day_name=day_name)
 
 
-async def pair_check_per_chat(update: Update) -> None:
+async def pair_check_per_chat(update: Update, _) -> None:
+    """This method will get a next pair for current chat"""
     if not update.effective_chat or not update.message:
         return
 

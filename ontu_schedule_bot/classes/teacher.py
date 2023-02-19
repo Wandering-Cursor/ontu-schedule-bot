@@ -4,6 +4,7 @@ from classes.base import BaseClass
 
 
 class Teacher(BaseClass):
+    """A teacher is just a container for two names"""
     full_name: str
     short_name: str
 

@@ -1,6 +1,7 @@
+"""This is a utils module, it contains Requests and pagination for bot"""
 from urllib.parse import urljoin
-import requests
 import math
+import requests
 
 from secret_config import API_URL
 from enums import Statuses, Endpoints
@@ -8,6 +9,7 @@ from enums import Statuses, Endpoints
 import classes
 
 import telegram
+
 
 # region Requests
 class BaseRequester:
@@ -17,11 +19,16 @@ class BaseRequester:
 
     session = requests.Session()
 
-    def _check_response(self, response: requests.Response):
+    def check_response(self, response: requests.Response):
+        """
+            Method that checks response
+            If we get non 200 response - raises ValueError
+        """
         if response.status_code != 200:
             raise ValueError(
-                f"Recieved non OK response ({response.status_code}): {response}",
-                response
+                f"Received non OK response ({response.status_code})",
+                response,
+                response.content
             )
         return response
 
@@ -43,7 +50,7 @@ class BaseRequester:
             **kwargs
         )
 
-        return self._check_response(response=response)
+        return self.check_response(response=response)
 
 
 class Getter(BaseRequester):
@@ -51,8 +58,7 @@ class Getter(BaseRequester):
 
     def get_chat(
             self,
-            chat_id: int
-            ) -> classes.Chat | None:
+            chat_id: int) -> classes.Chat | None:
         """Method to get information about a user"""
         response = self.make_request(
             endpoint=Endpoints.CHAT_INFO.value,
@@ -67,8 +73,7 @@ class Getter(BaseRequester):
         return classes.Chat.from_json(json_dict=answer)
 
     def get_faculties(
-            self
-        ) -> list[classes.Faculty]:
+            self) -> list[classes.Faculty]:
         """Method to get a list of faculties"""
         response = self.make_request(
             endpoint=Endpoints.FACULTIES_GET.value
@@ -86,8 +91,8 @@ class Getter(BaseRequester):
 
     def get_groups(
             self,
-            faculty_name: str
-        ) -> list[classes.Group]:
+            faculty_name: str) -> list[classes.Group]:
+        """This method returns a list of group from faculty name"""
         response = self.make_request(
             endpoint=Endpoints.GROUPS_GET.value,
             json={
@@ -106,8 +111,8 @@ class Getter(BaseRequester):
         return groups
 
     def get_all_chats(
-            self
-    ) -> list[classes.Chat]:
+            self) -> list[classes.Chat]:
+        """This method returns all Telegram Chats with data about them"""
         response = self.make_request(
             endpoint=Endpoints.CHATS_ALL.value
         )
@@ -124,8 +129,8 @@ class Getter(BaseRequester):
 
     def get_schedule(
             self,
-            group: classes.Group
-    ) -> classes.Schedule:
+            group: classes.Group) -> classes.Schedule:
+        """This method gets schedule for some specific group (schedule)"""
         response = self.make_request(
             endpoint=Endpoints.SCHEDULE_GET.value,
             json={
@@ -185,15 +190,19 @@ class Setter(BaseRequester):
 # endregion
 
 
+# region Pagination
 PAGE_SIZE = 10
 
 
 def get_number_of_pages(list_of_elements: list[object]) -> int:
+    """Get's number of pages from some list"""
     return math.ceil(len(list_of_elements) / PAGE_SIZE)
 
 def get_current_page(list_of_elements: list[object], page: int = 0):
-
+    """Returns current part of list divided on pages"""
     if len(list_of_elements) <= PAGE_SIZE:
         return list_of_elements
 
     return list_of_elements[page*PAGE_SIZE:(page+1)*PAGE_SIZE]
+
+# endregion

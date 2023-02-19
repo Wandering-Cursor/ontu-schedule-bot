@@ -1,3 +1,4 @@
+"""This module loads (or sets) secrets for the bot (API_TOKEN, API_URL...)"""
 from decouple import config
 
 API_TOKEN = config('API_TOKEN', default=None)

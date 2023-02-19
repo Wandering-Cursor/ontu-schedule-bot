@@ -1,13 +1,17 @@
 """Describes Lesson"""
+import datetime
+import re
+
 from classes.base import BaseClass
 
 from classes.teacher import Teacher
 
-import datetime
-import re
-
 
 class Lesson(BaseClass):
+    """
+        A lesson dataclass
+        Use formatted_lesson_info or strip lesson_info
+    """
     date: datetime.date
     teacher: Teacher
     full_name: str
