@@ -1,16 +1,22 @@
+"""Contains the 'heart' of the bot. Here it's initialized and configured"""
+import datetime
+import logging
+
 from secret_config import API_TOKEN
 import commands
 import patterns
 
 import pytz
 
-import datetime
-
-import logging
-
 import classes
 
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, PicklePersistence, JobQueue
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    PicklePersistence,
+    JobQueue
+)
 
 # Enable logging
 logging.basicConfig(

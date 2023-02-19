@@ -1,10 +1,12 @@
+"""This module contains all the commands bot may execute"""
 from telegram import InlineKeyboardButton, Update, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 import utils
 import classes
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+async def start_command(update: Update) -> None:
     """Executed when user initiates conversation, or returns to main menu"""
     telegram_chat = update.effective_chat
     if not telegram_chat:
@@ -63,7 +65,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
 
 
-async def faculty_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def faculty_select(update: Update) -> int:
+    """This command sends a list of faculties to choose for subscription"""
     query = update.callback_query
     if not query or not query.message:
         return -1
@@ -96,13 +99,14 @@ async def faculty_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
     await query.message.edit_text(
-        text=f"Будь-ласка - оберіть факультет:",
+        text="Будь-ласка - оберіть факультет:",
         reply_markup=reply_markup
     )
     return 0
 
 
-async def group_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def group_select(update: Update) -> None:
+    """This command sends a list of groups of some faculty to choose for subscription"""
     query = update.callback_query
     if not query or not query.message:
         return
@@ -183,7 +187,8 @@ async def group_select(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 
-async def group_set(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def group_set(update: Update) -> None:
+    """This command activates a subscription"""
     if not update.effective_chat:
         return
 
@@ -213,18 +218,29 @@ async def group_set(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def pair_check_for_group(chat: classes.Chat) -> str | bool | None:
-    """Returns None if chat has no sub, false if there's no pair, str if there's a pair"""
+async def pair_check_for_group(
+        chat: classes.Chat,
+        find_all: bool = False) -> str | bool:
+    """Returns False if there's no pair, pair as string if there is a lesson"""
     if not chat.subscription:
-        return None
+        return False
+
     schedule = utils.Getter().get_schedule(
         chat.subscription.group
     )
-    next_pair, day_name = schedule.get_next_pair()
+
+    data = schedule.get_next_pair(find_all=find_all)
+
+    if not data:
+        return False
+
+    next_pair = data[0]
+    day_name = data[1]
+
     return next_pair.get_text(day_name=day_name)
 
 
-async def pair_check_per_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def pair_check_per_chat(update: Update) -> None:
     if not update.effective_chat or not update.message:
         return
 
@@ -238,7 +254,7 @@ async def pair_check_per_chat(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    next_pair_text = await pair_check_for_group(chat)
+    next_pair_text = await pair_check_for_group(chat, find_all=True)
     if next_pair_text is None:
         await update.message.reply_html(
             text="Не вдалося отримати наступну пару :(\nСпробуйте /start"
@@ -254,6 +270,7 @@ async def pair_check_per_chat(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """This method is used to check for upcoming pairs"""
     job = context.job
     if not job:
         return
