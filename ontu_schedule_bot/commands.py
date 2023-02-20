@@ -1,6 +1,7 @@
 """This module contains all the commands bot may execute"""
 from telegram import InlineKeyboardButton, Update, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
 import utils
 import classes
@@ -292,5 +293,6 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
             continue
         await context.bot.send_message(
             chat.chat_id,
-            f"{result}"
+            f"{result}",
+            parse_mode=ParseMode.HTML,
         )
