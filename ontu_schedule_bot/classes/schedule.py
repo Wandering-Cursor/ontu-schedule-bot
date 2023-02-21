@@ -24,19 +24,14 @@ def _next_pair_no_from_time(hour_minute_tuple: tuple[int, int]) -> int:
     i = 0
     hour = hour_minute_tuple[0]
     minute = hour_minute_tuple[1]
-    print("{}:{}".format(hour, minute))
     for time_dict in pair_times:
         i += 1
-        print("Pair #{} - {}".format(i, time_dict))
         if hour < time_dict["hour"]:
-            print("{} < {}[hour]".format(hour, time_dict))
             break
         if time_dict["hour"] == hour and minute < time_dict["minute"]:
-            print("{0} == {1} & < {2} < {1}[minute]".format(hour, time_dict, minute))
             break
     else:
         i = -1
-    print(i)
     return i
 
 
@@ -130,7 +125,6 @@ class Schedule(BaseClass):
 
         initial_day_no = now.weekday()
         initial_pair_no, _ = self._get_next_pair_index(hour_minute_tuple=hour_minute_tuple)
-        print(initial_pair_no, "inited with")
 
         day_no, pair_no = initial_day_no, initial_pair_no
 
@@ -144,8 +138,7 @@ class Schedule(BaseClass):
                 pair_no = 0
                 continue
             for pair in pairs_of_day:
-                print(pair.pair_index, pair_no)
-                if pair.pair_index >= pair_no:
+                if pair.pair_no >= pair_no:
                     print("Found you")
                     if pair.has_lessons:
                         next_pair = pair
