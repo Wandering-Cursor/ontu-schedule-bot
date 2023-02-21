@@ -144,7 +144,9 @@ class Schedule(BaseClass):
                 pair_no = 0
                 continue
             for pair in pairs_of_day:
+                print(pair.pair_index, pair_no)
                 if pair.pair_index >= pair_no:
+                    print("Found you")
                     if pair.has_lessons:
                         next_pair = pair
                         break
