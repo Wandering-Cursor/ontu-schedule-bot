@@ -36,6 +36,7 @@ def _next_pair_no_from_time(hour_minute_tuple: tuple[int, int]) -> int:
             break
     else:
         i = -1
+    print(i)
     return i
 
 
@@ -129,6 +130,7 @@ class Schedule(BaseClass):
 
         initial_day_no = now.weekday()
         initial_pair_no, _ = self._get_next_pair_index(hour_minute_tuple=hour_minute_tuple)
+        print(initial_pair_no, "inited with")
 
         day_no, pair_no = initial_day_no, initial_pair_no
 
