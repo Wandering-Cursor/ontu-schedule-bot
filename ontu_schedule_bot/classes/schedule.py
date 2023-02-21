@@ -24,11 +24,15 @@ def _next_pair_no_from_time(hour_minute_tuple: tuple[int, int]) -> int:
     i = 0
     hour = hour_minute_tuple[0]
     minute = hour_minute_tuple[1]
+    print("{}:{}".format(hour, minute))
     for time_dict in pair_times:
         i += 1
+        print("Pair #{} - {}".format(i, time_dict))
         if hour < time_dict["hour"]:
+            print("{} < {}[hour]".format(hour, time_dict))
             break
         if time_dict["hour"] == hour and minute < time_dict["minute"]:
+            print("{0} == {1} & < {2} < {1}[minute]".format(hour, time_dict, minute))
             break
     else:
         i = -1
