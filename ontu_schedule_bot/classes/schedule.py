@@ -12,8 +12,8 @@ day_names = {
     0: "Понеділок",
     1: "Вівторок",
     2: "Середа",
-    3: "Четверг",
-    4: "П'ятниця",
+    3: "Четвер",
+    4: "П`ятниця",
     5: "Субота",
     6: "Неділя",
 }
@@ -129,10 +129,8 @@ class Schedule(BaseClass):
         day_no, pair_no = initial_day_no, initial_pair_no
 
         next_pair = None
-        print(self.days)
         while True:
             pairs_of_day = self.days.get(day_names.get(day_no, ""))
-            print("Pair - Day - Pairs", pair_no, day_names.get(day_no), pairs_of_day)
             if not pairs_of_day and not find_all:
                 return None
             if not pairs_of_day:
