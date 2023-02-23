@@ -137,6 +137,7 @@ class Schedule(BaseClass):
                 day_no = self.__get_next_day(day_no=day_no)
                 pair_no = 0
                 continue
+            print("Pair - Day - Pairs", pair_no, day_names.get(day_no), pairs_of_day)
             for pair in pairs_of_day:
                 if pair.pair_no >= pair_no:
                     if pair.has_lessons:
