@@ -129,6 +129,7 @@ class Schedule(BaseClass):
         day_no, pair_no = initial_day_no, initial_pair_no
 
         next_pair = None
+        print(self.days)
         while True:
             pairs_of_day = self.days.get(day_names.get(day_no, ""))
             print("Pair - Day - Pairs", pair_no, day_names.get(day_no), pairs_of_day)
