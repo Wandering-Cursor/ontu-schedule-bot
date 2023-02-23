@@ -131,13 +131,13 @@ class Schedule(BaseClass):
         next_pair = None
         while True:
             pairs_of_day = self.days.get(day_names.get(day_no, ""))
+            print("Pair - Day - Pairs", pair_no, day_names.get(day_no), pairs_of_day)
             if not pairs_of_day and not find_all:
                 return None
             if not pairs_of_day:
                 day_no = self.__get_next_day(day_no=day_no)
                 pair_no = 0
                 continue
-            print("Pair - Day - Pairs", pair_no, day_names.get(day_no), pairs_of_day)
             for pair in pairs_of_day:
                 if pair.pair_no >= pair_no:
                     if pair.has_lessons:
