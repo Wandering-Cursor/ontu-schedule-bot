@@ -118,8 +118,8 @@ def _back_forward_buttons_get(
         page: int,
         query_data: list) -> tuple[tuple, tuple]:
     """This method encapsulates logics to get forward and backwards buttons"""
-    back_list: list[str | int] = query_data
-    forward_list: list[str | int] = query_data
+    back_list: list[str | int] = query_data.copy()
+    forward_list: list[str | int] = query_data.copy()
 
     if len(query_data) > enums.PAGE_INDEX:
         back_list[2] = page - 1 if page - 1 >= 0 else 0
