@@ -8,6 +8,7 @@ from .pair import Pair
 from .schedule import Schedule
 from .subscription import Subscription
 from .teacher import Teacher
+from .day import Day
 
 __all__ = [
     "BaseClass",
@@ -19,4 +20,5 @@ __all__ = [
     "Schedule",
     "Subscription",
     "Teacher",
+    "Day",
 ]

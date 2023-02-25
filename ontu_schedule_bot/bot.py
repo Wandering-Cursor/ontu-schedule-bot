@@ -67,11 +67,36 @@ def main() -> None:
             pattern=patterns.start_pattern
         )
     )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.get_schedule,
+            pattern=patterns.get_schedule
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.get_day_details,
+            pattern=patterns.day_details_pattern
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.get_pair_details,
+            pattern=patterns.pair_details_pattern
+        )
+    )
 
     application.add_handler(
         CommandHandler(
             command="next_pair",
             callback=commands.pair_check_per_chat
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            command="schedule",
+            callback=commands.get_schedule
         )
     )
 

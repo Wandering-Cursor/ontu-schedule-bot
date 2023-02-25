@@ -5,6 +5,8 @@ from classes.base import BaseClass, pair_times
 
 from classes.pair import Pair
 
+from classes.day import Day
+
 
 MAX_PAIRS = 6
 
@@ -46,6 +48,8 @@ class Schedule(BaseClass):
         (and will provide a way to get a schedule for whole week later on)
     """
     days: dict[str, list[Pair]]
+
+    day_names = day_names
 
     @classmethod
     def from_json(cls, json_dict: dict):
@@ -160,3 +164,15 @@ class Schedule(BaseClass):
             )
 
         return next_pair, day_names.get(day_no, "")
+
+    def get_week_representation(self) -> list[Day]:
+        """Returns a list of days represented as strings"""
+        days: list[Day] = []
+        for day_name, pairs in self.days.items():
+            days.append(
+                Day(
+                    day_name=day_name,
+                    pairs=pairs
+                )
+            )
+        return days

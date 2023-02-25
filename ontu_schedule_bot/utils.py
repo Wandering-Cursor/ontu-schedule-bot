@@ -206,3 +206,18 @@ def get_current_page(list_of_elements: list[object], page: int = 0):
     return list_of_elements[page*PAGE_SIZE:(page+1)*PAGE_SIZE]
 
 # endregion
+
+
+# region Common
+
+def get_chat_by_tg_chat(
+        chat_id: int):
+    """A method to get a chat by chat_id"""
+    chat = Getter().get_chat(
+        chat_id=chat_id
+    )
+    if not chat or not chat.subscription:
+        raise ValueError("В вас немає підписки")
+    return chat
+
+# endregion
