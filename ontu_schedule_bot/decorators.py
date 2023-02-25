@@ -7,10 +7,6 @@ def reply_with_exception(func):
     If while processing a call ValueError occurs - tries to reply with text to a message
     """
     async def inner(update: Update, *args, **kwargs):
-        if update.effective_chat:
-            await update.effective_chat.send_chat_action(
-                action="typing"
-            )
         try:
             value = await func(update, *args, **kwargs)
             return value

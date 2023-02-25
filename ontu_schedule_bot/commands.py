@@ -16,6 +16,10 @@ async def start_command(update: Update, _) -> None:
     if not telegram_chat:
         return
 
+    await telegram_chat.send_chat_action(
+        action="typing"
+    )
+
     chat_entity = None
     try:
         chat_entity = utils.Getter().get_chat(
@@ -262,6 +266,11 @@ async def pair_check_per_chat(update: Update, _) -> None:
     if not update.effective_chat or not update.message:
         return
 
+    if update.effective_chat:
+        await update.effective_chat.send_chat_action(
+            action="typing"
+        )
+
     chat_id = update.effective_chat.id
     chat = utils.get_chat_by_tg_chat(
         chat_id=chat_id
@@ -319,6 +328,11 @@ async def get_schedule(update: Update, _) -> None:
     if update.callback_query:
         await update.callback_query.answer(text="Будь-ласка, зачекайте")
         message = update.callback_query.message
+
+    if update.effective_chat:
+        await update.effective_chat.send_chat_action(
+            action="typing"
+        )
 
     if not update.effective_chat or not message:
         return
