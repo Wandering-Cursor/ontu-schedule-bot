@@ -10,7 +10,7 @@ MESSAGE_FORMAT = """
 """
 
 LESSON_FORMAT = """
-{lesson_name} {lesson_date}
+{short_name}|{full_name} {lesson_date}
 {teacher_name}
 
 Картка:
@@ -67,9 +67,10 @@ class Pair(BaseClass):
 
         for lesson in self.lessons:
             lessons_string += LESSON_FORMAT.format(
-                lesson_name=lesson.full_name,
+                short_name=lesson.short_name,
+                full_name=lesson.full_name,
                 lesson_date=f"- {lesson.date}" if lesson.date else "",
-                teacher_name=lesson.teacher.short_name,
+                teacher_name=lesson.teacher.full_name,
                 lesson_info=lesson.formatted_lesson_info
             )
             lessons_string += "\n"
