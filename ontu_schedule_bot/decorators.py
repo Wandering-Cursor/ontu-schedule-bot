@@ -26,6 +26,7 @@ def reply_with_exception(func):
                 print(
                     f"Виникла помилка:\n{exception.args}"
                 )
+                return None
 
             await message.reply_text(
                 f"Виникла помилка:\n{exception.args}"
