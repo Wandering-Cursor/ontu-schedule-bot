@@ -12,12 +12,17 @@ def reply_with_exception(func):
     """
     If while processing a call ValueError occurs - tries to reply with text to a message
     """
-    async def inner(*args, update: Update | None = None, **kwargs):
+    async def inner(*args, **kwargs):
         try:
-            value = await func(update=update, *args, **kwargs)
+            value = await func(*args, **kwargs)
             return value
         except ValueError as exception:
-            if not update:
+            update = kwargs.pop("update", None)
+            for arg in args:
+                if isinstance(arg, Update):
+                    update = arg
+
+            if not update or not isinstance(update, Update):
                 return _print(exception)
 
             query = update.callback_query
