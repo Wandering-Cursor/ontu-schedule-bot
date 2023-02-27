@@ -5,7 +5,6 @@ from telegram import Update
 def _print(exception: Exception):
     """Print exception for methods"""
     print(f"Виникла помилка:\n{exception.args}")
-    return None
 
 
 def reply_with_exception(func):
