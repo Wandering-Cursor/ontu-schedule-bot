@@ -167,8 +167,8 @@ class Setter(BaseRequester):
     def set_chat_group(
             self,
             chat: telegram.Chat,
-            group: classes.Group
-        ) -> classes.Subscription|dict:
+            group: classes.Group,
+            is_active: bool = True) -> classes.Subscription | dict:
         """Updates subscription info for chat"""
         response = self.make_request(
             endpoint=Endpoints.CHAT_UPDATE.value,
@@ -178,7 +178,7 @@ class Setter(BaseRequester):
                     "name": group.name,
                     "faculty": group.faculty.name
                 },
-                "is_active": True,
+                "is_active": is_active,
             }
         )
 
@@ -216,8 +216,8 @@ def get_chat_by_tg_chat(
     chat = Getter().get_chat(
         chat_id=chat_id
     )
-    if not chat or not chat.subscription:
-        raise ValueError("В вас немає підписки")
+    if not chat:
+        raise ValueError("Будь-ласка - почніть з початку: /start")
     return chat
 
 # endregion

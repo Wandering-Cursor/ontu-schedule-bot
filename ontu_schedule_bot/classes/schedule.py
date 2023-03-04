@@ -128,7 +128,12 @@ class Schedule(BaseClass):
         hour_minute_tuple = (now.hour, now.minute)
 
         initial_day_no = now.weekday()
-        initial_pair_no, _ = self._get_next_pair_index(hour_minute_tuple=hour_minute_tuple)
+        initial_pair_no, day_changed = self._get_next_pair_index(
+            hour_minute_tuple=hour_minute_tuple
+        )
+
+        if not find_all and day_changed:
+            return None
 
         day_no, pair_no = initial_day_no, initial_pair_no
 

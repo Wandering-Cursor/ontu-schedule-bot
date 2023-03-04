@@ -55,3 +55,11 @@ def pair_details_pattern(callback_data):
         if callback_data[0] == "pair_details":
             return True
     return False
+
+
+def toggle_subscription_pattern(callback_data):
+    """Pattern for toggle_subscription"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "toggle_subscription":
+            return True
+    return False

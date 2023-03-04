@@ -85,6 +85,12 @@ def main() -> None:
             pattern=patterns.pair_details_pattern
         )
     )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.toggle_subscription,
+            pattern=patterns.toggle_subscription_pattern
+        )
+    )
 
     application.add_handler(
         CommandHandler(

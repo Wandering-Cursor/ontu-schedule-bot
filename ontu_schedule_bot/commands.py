@@ -46,6 +46,14 @@ async def start_command(update: Update, _) -> None:
                 ),
             ]
         )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text="Переключити отримання розкладу",
+                    callback_data=("toggle_subscription", chat_entity)
+                )
+            ]
+        )
     else:
         keyboard.append(
             [
@@ -240,10 +248,19 @@ async def group_set(update: Update, _) -> None:
 @decorators.reply_with_exception
 async def pair_check_for_group(
         chat: classes.Chat,
-        find_all: bool = False) -> str | bool:
-    """Returns False if there's no pair, pair as string if there is a lesson"""
+        find_all: bool = False,
+        check_subscription_is_active: bool = False) -> str | bool:
+    """
+    Returns False if there's no pair, pair as string if there is a lesson
+
+    If check_subscription_is_active is True - if subscription is not active - will not send anything
+    """
     if not chat.subscription:
         return False
+
+    if check_subscription_is_active:
+        if not chat.subscription.is_active:
+            return False
 
     schedule = utils.Getter().get_schedule(
         chat.subscription.group
@@ -444,7 +461,10 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     all_chats = utils.Getter().get_all_chats()
     for chat in all_chats:
-        result = await pair_check_for_group(chat=chat)
+        result = await pair_check_for_group(
+            chat=chat,
+            check_subscription_is_active=True
+        )
         if not result:
             continue
         await context.bot.send_message(
@@ -452,3 +472,39 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
             f"{result}",
             parse_mode=ParseMode.HTML,
         )
+
+
+@decorators.reply_with_exception
+async def toggle_subscription(update: Update, _):
+    """This method toggles current state of subscription"""
+    query = update.callback_query
+
+    if not query or not update.effective_chat:
+        raise ValueError("Improper method usage")
+
+    if not query.message or not query.data:
+        raise ValueError("Incomplete data :(")
+
+    data: tuple[str, classes.Chat] = tuple(query.data)  # type: ignore
+
+    chat = data[1]
+    if not chat.subscription:
+        raise ValueError("В вас ще немає підписки! Здається ви мені бота зламали...")
+
+    new_status = not chat.subscription.is_active
+
+    utils.Setter().set_chat_group(
+        chat=update.effective_chat,
+        group=chat.subscription.group,
+        is_active=new_status
+    )
+
+    if new_status:
+        status = "активна"
+    else:
+        status = "вимкнена"
+
+    await query.answer(
+        text=f"Ваша підписка тепер {status}",
+        show_alert=True
+    )
