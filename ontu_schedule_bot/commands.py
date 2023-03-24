@@ -463,6 +463,7 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
     for chat in all_chats:
         result = await pair_check_for_group(
             chat=chat,
+            find_all=False,
             check_subscription_is_active=True
         )
         if not result:
