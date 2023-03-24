@@ -1,7 +1,8 @@
 """This module contains all the commands bot may execute"""
+import requests
+
 from telegram import InlineKeyboardButton, Update, InlineKeyboardMarkup, Message
 from telegram.ext import ContextTypes
-from telegram.constants import ParseMode
 
 import utils
 import classes
@@ -82,11 +83,11 @@ async def start_command(update: Update, _) -> None:
 
 
 @decorators.reply_with_exception
-async def faculty_select(update: Update, _) -> int:
+async def faculty_select(update: Update, _):
     """This command sends a list of faculties to choose for subscription"""
     query = update.callback_query
     if not query or not query.message:
-        return -1
+        return
     await query.answer()
 
     keyboard = []
@@ -119,7 +120,6 @@ async def faculty_select(update: Update, _) -> int:
         text="Будь-ласка - оберіть факультет:",
         reply_markup=reply_markup
     )
-    return 0
 
 
 def _back_forward_buttons_get(
@@ -453,25 +453,49 @@ async def get_pair_details(update: Update, _):
     )
 
 
-async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """This method is used to check for upcoming pairs"""
-    job = context.job
-    if not job:
+@decorators.reply_with_exception
+async def send_pair_check_result(
+        chat: classes.Chat,
+        context: ContextTypes.DEFAULT_TYPE):
+    """
+    Extracting this because I was hoping it'll run async, but it doesn't :)
+    """
+    result = await pair_check_for_group(
+        chat=chat,
+        find_all=True,
+        check_subscription_is_active=False
+    )
+
+    if not isinstance(result, str):
         return
 
+    api_token = context.bot.token
+    url_to_request = f"https://api.telegram.org/bot{api_token}/sendMessage"
+    try:
+        requests.get(
+            url=url_to_request,
+            data={
+                'chat_id': chat.chat_id,
+                'text': result + f"\n{chat.chat_name}",
+                'parse_mode': 'HTML'
+            },
+            timeout=10
+        )
+    except (
+        requests.exceptions.RequestException,
+        ConnectionError
+    ) as exception:
+        print(exception, "Could not send message")
+
+
+@decorators.reply_with_exception
+async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """This method is used to check for upcoming pairs"""
     all_chats = utils.Getter().get_all_chats()
     for chat in all_chats:
-        result = await pair_check_for_group(
+        await send_pair_check_result(
             chat=chat,
-            find_all=False,
-            check_subscription_is_active=True
-        )
-        if not result:
-            continue
-        await context.bot.send_message(
-            chat.chat_id,
-            f"{result}",
-            parse_mode=ParseMode.HTML,
+            context=context
         )
 
 
