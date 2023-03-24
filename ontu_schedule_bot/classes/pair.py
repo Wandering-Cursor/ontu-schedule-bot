@@ -1,10 +1,10 @@
 """Describes pair"""
-from classes.base import BaseClass, pair_times
+from classes.base import BaseClass, pair_times, pair_end_times
 
 from classes.lesson import Lesson
 
 MESSAGE_FORMAT = """
-Пара №{pair_no}, початок о {hour}:{minute} - {day_name}
+Пара №{pair_no}, пара триває з {hour_0}:{minute_0} по {hour_1}:{minute_1} - {day_name}
 
 {lessons}
 """
@@ -61,7 +61,8 @@ class Pair(BaseClass):
 
     def as_text(self, day_name: str | None = None):
         """Returns pair's representation to show in bot (may be HTML)"""
-        time = pair_times[self.pair_index]
+        time_start = pair_times[self.pair_index]
+        time_end = pair_end_times[self.pair_index]
 
         lessons_string = ""
 
@@ -77,8 +78,10 @@ class Pair(BaseClass):
 
         message = MESSAGE_FORMAT.format(
             pair_no=self.pair_no,
-            hour=str(time['hour']).zfill(2),
-            minute=str(time['minute']).zfill(2),
+            hour_0=str(time_start['hour']).zfill(2),
+            minute_0=str(time_start['minute']).zfill(2),
+            hour_1=str(time_end['hour']).zfill(2),
+            minute_1=str(time_end['minute']).zfill(2),
             day_name=day_name or "",
             lessons=lessons_string
         )
