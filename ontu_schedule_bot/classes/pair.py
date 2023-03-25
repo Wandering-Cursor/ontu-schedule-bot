@@ -4,7 +4,7 @@ from classes.base import BaseClass, pair_times, pair_end_times
 from classes.lesson import Lesson
 
 MESSAGE_FORMAT = """
-Пара №{pair_no}, пара триває з {hour_0}:{minute_0} по {hour_1}:{minute_1} - {day_name}
+Пара №{pair_no}, триває з {hour_0}:{minute_0} по {hour_1}:{minute_1} - {day_name}
 
 {lessons}
 """
