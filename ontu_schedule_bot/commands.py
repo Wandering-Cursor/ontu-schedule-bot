@@ -293,7 +293,11 @@ async def pair_check_per_chat(update: Update, _) -> None:
         chat_id=chat_id
     )
 
-    next_pair_text = await pair_check_for_group(chat, find_all=True)
+    next_pair_text = await pair_check_for_group(
+        chat,
+        find_all=True,
+        check_subscription_is_active=False
+    )
     if next_pair_text is None:
         await update.message.reply_html(
             text="Не вдалося отримати наступну пару :(\nСпробуйте /start"
@@ -462,8 +466,8 @@ async def send_pair_check_result(
     """
     result = await pair_check_for_group(
         chat=chat,
-        find_all=True,
-        check_subscription_is_active=False
+        find_all=False,
+        check_subscription_is_active=True
     )
 
     if not isinstance(result, str):
