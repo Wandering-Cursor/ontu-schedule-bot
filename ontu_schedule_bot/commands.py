@@ -480,7 +480,7 @@ async def send_pair_check_result(
             url=url_to_request,
             data={
                 'chat_id': chat.chat_id,
-                'text': result + f"\n{chat.chat_name}",
+                'text': result,
                 'parse_mode': 'HTML'
             },
             timeout=10
