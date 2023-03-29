@@ -1,5 +1,13 @@
 """Contains some handy decorators for bot"""
+import asyncio
+import logging
+
 from telegram import Update
+
+from requests.exceptions import RequestException
+
+from utils import split_string
+from secret_config import DEBUG_CHAT_ID
 
 
 def _print(exception: Exception):
@@ -15,7 +23,10 @@ def reply_with_exception(func):
         try:
             value = await func(*args, **kwargs)
             return value
-        except ValueError as exception:
+        except (ValueError, RequestException) as exception:
+            logging.error(
+                msg=f"Exception in {func}\n{exception}"
+            )
             update = kwargs.pop("update", None)
             for arg in args:
                 if isinstance(arg, Update):
@@ -34,7 +45,23 @@ def reply_with_exception(func):
 
             if not message:
                 return _print(exception)
-            await message.reply_text(
-                f"Виникла помилка:\n{exception.args}"
+
+            short_text = "Виникла помилка.\nПовідомте про це @man_with_a_name."
+
+            bot_msg = await message.reply_text(
+                text=short_text,
             )
+
+            text_full = "Виникла помилка:\n"
+            text_full += str(exception.args)
+            texts = split_string(
+                string=text_full
+            )
+
+            for text in texts:
+                await bot_msg.get_bot().send_message(
+                    chat_id=DEBUG_CHAT_ID,
+                    text=text,
+                )
+                await asyncio.sleep(0.2)
     return inner

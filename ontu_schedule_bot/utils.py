@@ -220,4 +220,14 @@ def get_chat_by_tg_chat(
         raise ValueError("Будь-ласка - почніть з початку: /start")
     return chat
 
+
+def split_string(
+        string: str,
+        max_len: int = 4096) -> list[str]:
+    """Split into an array of string with size no more than specified"""
+    # From https://stackoverflow.com/a/13673133
+    string_size = len(string)
+    return [string[i:i+max_len] for i in range(0, string_size, max_len)]
+
+
 # endregion

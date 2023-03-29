@@ -16,3 +16,11 @@ if not API_URL:
     with open('.env', 'a+', encoding='UTF-8') as file:
         file.write(f'API_URL={API_URL}\n')
     print("Saved API_URL to .env")
+
+DEBUG_CHAT_ID = config('DEBUG_CHAT_ID', default=None)
+if not API_URL:
+    print("DEBUG_CHAT_ID not found in .env")
+    API_URL = input("Enter DEBUG_CHAT_ID to receive error messages: ")
+    with open('.env', 'a+', encoding='UTF-8') as file:
+        file.write(f'DEBUG_CHAT_ID={DEBUG_CHAT_ID}\n')
+    print("Saved DEBUG_CHAT_ID to .env")
