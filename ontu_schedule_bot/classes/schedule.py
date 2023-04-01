@@ -151,8 +151,13 @@ class Schedule(BaseClass):
                     if pair.has_lessons:
                         next_pair = pair
                         break
+                    # If pair exists, but there's no lesson
                     if not find_all:
                         return None
+            else:
+                # If we don't need to find pair in all time
+                if not find_all:
+                    return None
             if self._check_should_stop(
                     next_pair=next_pair,
                     day_no=day_no,
