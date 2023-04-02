@@ -20,7 +20,8 @@ from telegram.ext import (
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
     filename="log.log"
 )
 logger = logging.getLogger(__name__)
@@ -120,6 +121,11 @@ def main() -> None:
             ),
             days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
         )
+
+    application.job_queue.run_repeating(
+        commands.update_notbot,
+        interval=1800  # 30 * 60 = every 30 minutes
+    )
 
     application.run_polling()
 

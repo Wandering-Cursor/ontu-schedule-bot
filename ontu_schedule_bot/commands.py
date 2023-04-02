@@ -1,5 +1,7 @@
 """This module contains all the commands bot may execute"""
+import asyncio
 import requests
+import logging
 
 from telegram import InlineKeyboardButton, Update, InlineKeyboardMarkup, Message
 from telegram.ext import ContextTypes
@@ -537,3 +539,15 @@ async def toggle_subscription(update: Update, _):
         text=f"Ваша підписка тепер {status}",
         show_alert=True
     )
+
+
+async def update_notbot(_: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    A method to update notbot with hope to reduce waiting time on average
+    Args:
+        _ (ContextTypes.DEFAULT_TYPE): Context, that's passed when calling for task
+    """
+    await asyncio.sleep(0)
+    logging.info("Updating notbot")
+    utils.Getter().get_faculties()
+    logging.info("Finished updating notbot")
