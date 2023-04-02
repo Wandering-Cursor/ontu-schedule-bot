@@ -1,7 +1,6 @@
 """This module contains all the commands bot may execute"""
 import asyncio
 import logging
-import requests
 
 from telegram import InlineKeyboardButton, Update, InlineKeyboardMarkup, Message
 from telegram.ext import ContextTypes
@@ -52,7 +51,7 @@ async def start_command(update: Update, _) -> None:
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    text="Переключити отримання розкладу",
+                    text="Перемкнути отримання розкладу",
                     callback_data=("toggle_subscription", chat_entity)
                 )
             ]
@@ -475,23 +474,11 @@ async def send_pair_check_result(
     if not isinstance(result, str):
         return
 
-    api_token = context.bot.token
-    url_to_request = f"https://api.telegram.org/bot{api_token}/sendMessage"
-    try:
-        requests.get(
-            url=url_to_request,
-            data={
-                'chat_id': chat.chat_id,
-                'text': result,
-                'parse_mode': 'HTML'
-            },
-            timeout=10
-        )
-    except (
-        requests.exceptions.RequestException,
-        ConnectionError
-    ) as exception:
-        print(exception, "Could not send message")
+    utils.send_message_to_telegram(
+        bot_token=context.bot.token,
+        chat_id=chat.chat_id,
+        text=result
+    )
 
 
 @decorators.reply_with_exception
@@ -535,10 +522,14 @@ async def toggle_subscription(update: Update, _):
     else:
         status = "вимкнена"
 
+    await query.message.delete()
+
     await query.answer(
         text=f"Ваша підписка тепер {status}",
         show_alert=True
     )
+
+    await start_command(update=update, _=_)
 
 
 async def update_notbot(_: ContextTypes.DEFAULT_TYPE) -> None:
