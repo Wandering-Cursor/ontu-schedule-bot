@@ -22,7 +22,14 @@ from telegram.ext import (
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
     level=logging.INFO,
-    filename="log.log"
+    handlers=[
+        logging.FileHandler(
+            filename=f"logs/debug_{datetime.datetime.now().isoformat().replace(':', '_')}.log",
+            mode="w",
+            encoding="UTF-8"
+        ),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
