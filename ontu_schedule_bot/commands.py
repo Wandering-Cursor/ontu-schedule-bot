@@ -1,7 +1,7 @@
 """This module contains all the commands bot may execute"""
 import asyncio
-import requests
 import logging
+import requests
 
 from telegram import InlineKeyboardButton, Update, InlineKeyboardMarkup, Message
 from telegram.ext import ContextTypes
