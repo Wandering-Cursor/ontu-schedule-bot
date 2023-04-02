@@ -186,3 +186,26 @@ class Schedule(BaseClass):
                 )
             )
         return days
+
+    def get_today_representation(
+            self,
+            today: datetime.date | None = None) -> Day | None:
+        """Method to get schedule of current day
+        You can override what `current` means
+
+        Args:
+            today (datetime.date | None): If not passed = datetime.date.today()
+
+        Returns:
+            Day: A day object with schedule
+        """
+        if not isinstance(today, datetime.date):
+            today = datetime.date.today()
+
+        weekday = today.weekday()
+        week = self.get_week_representation()
+
+        try:
+            return week[weekday]
+        except IndexError:
+            return None

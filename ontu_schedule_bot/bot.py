@@ -107,11 +107,16 @@ def main() -> None:
             callback=commands.pair_check_per_chat
         )
     )
-
     application.add_handler(
         CommandHandler(
             command="schedule",
             callback=commands.get_schedule
+        )
+    )
+    application.add_handler(
+        CommandHandler(
+            command="today",
+            callback=commands.get_today
         )
     )
 
