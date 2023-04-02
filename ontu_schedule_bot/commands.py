@@ -522,8 +522,6 @@ async def toggle_subscription(update: Update, _):
     else:
         status = "вимкнена"
 
-    await query.message.delete()
-
     await query.answer(
         text=f"Ваша підписка тепер {status}",
         show_alert=True
