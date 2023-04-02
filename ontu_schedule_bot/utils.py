@@ -1,6 +1,7 @@
 """This is a utils module, it contains Requests and pagination for bot"""
 from urllib.parse import urljoin
 import math
+import logging
 import requests
 
 from secret_config import API_URL
@@ -228,6 +229,50 @@ def split_string(
     # From https://stackoverflow.com/a/13673133
     string_size = len(string)
     return [string[i:i+max_len] for i in range(0, string_size, max_len)]
+
+
+def send_message_to_telegram(
+        bot_token: str,
+        chat_id: int | str,
+        text: str,
+        parse_mode: str = "HTML") -> bool:
+    """Util method to send message via Telegram Bot
+
+    Args:
+        bot_token (str): API token of some bot
+        chat_id (int): ID of chat to send a message to
+        text (str): Text of the message (Currently no support for additional stuff)
+
+    Returns:
+        bool: Wether message was sent, or not. True if sent, False if error occurred
+    """
+    api_endpoint = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    try:
+        response = requests.get(
+            url=api_endpoint,
+            data={
+                'chat_id': chat_id,
+                'text': text,
+                'parse_mode': parse_mode,
+            },
+            timeout=5,
+        )
+
+        if response.status_code != 200:
+            raise ValueError(
+                "Got non 200 response",
+                response
+            )
+
+        # We've sent the message
+        return True
+    except (
+        requests.exceptions.RequestException,
+        ConnectionError,
+        ValueError
+    ) as exception:
+        logging.exception("Could not send message\nException: %s", exception)
+        return False
 
 
 # endregion
