@@ -377,24 +377,19 @@ async def get_schedule(update: Update, _) -> None:
         week_schedule=week_schedule
     )
 
+
 @decorators.reply_with_exception
-async def get_day_details(update: Update, _):
+async def send_day_details(
+        day: classes.Day,
+        message: Message,
+        send_new: bool = False):
+    """A `helper` method to send details of the day
+
+    Args:
+        day (classes.Day): A day that we need to send
+        message (Message): Message of bot or human
+        send_new (bool, optional): If True - new message will be sent. Defaults to False.
     """
-    Callback data contains:
-        1. string
-        2. day
-    """
-
-    query = update.callback_query
-    if not query or not query.message or not query.data:
-        raise ValueError("get_day_details is designed for callbacks")
-
-    await query.answer(text="Будь-ласка, зачекайте")
-
-    callback_data: tuple[str, classes.Day] = tuple(query.data)  # type: ignore
-
-    day = callback_data[1]
-
     keyboard = []
     text = f"Пари {day.name}:\n"
 
@@ -419,12 +414,45 @@ async def get_day_details(update: Update, _):
         ]
     )
 
-    await query.message.edit_text(
-        text=text,
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=keyboard
-        )
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard
     )
+
+    if not send_new:
+        await message.edit_text(
+            text=text,
+            reply_markup=markup,
+        )
+    else:
+        await message.reply_text(
+            text=text,
+            reply_markup=markup,
+        )
+
+
+@decorators.reply_with_exception
+async def get_day_details(update: Update, _):
+    """
+    Callback data contains:
+        1. string
+        2. day
+    """
+
+    query = update.callback_query
+    if not query or not query.message or not query.data:
+        raise ValueError("get_day_details is designed for callbacks")
+
+    await query.answer(text="Будь-ласка, зачекайте")
+
+    callback_data: tuple[str, classes.Day] = tuple(query.data)  # type: ignore
+
+    day = callback_data[1]
+
+    await send_day_details(
+        day=day,
+        message=query.message
+    )
+
 
 @decorators.reply_with_exception
 async def get_pair_details(update: Update, _):
@@ -530,6 +558,7 @@ async def toggle_subscription(update: Update, _):
     await start_command(update=update, _=_)
 
 
+@decorators.reply_with_exception
 async def update_notbot(_: ContextTypes.DEFAULT_TYPE) -> None:
     """
     A method to update notbot with hope to reduce waiting time on average
@@ -540,3 +569,52 @@ async def update_notbot(_: ContextTypes.DEFAULT_TYPE) -> None:
     logging.info("Updating notbot")
     utils.Getter().get_faculties()
     logging.info("Finished updating notbot")
+
+
+@decorators.reply_with_exception
+async def get_today(update: Update, _):
+    """Method that returns a `schedule` like message for this day
+
+    Args:
+        update (Update): Telegram Update (with message...)
+        _ (_type_): Redundant telegram bot argument
+    """
+    message = update.message
+    if update.effective_chat:
+        await update.effective_chat.send_chat_action(
+            action="typing"
+        )
+
+    if not update.effective_chat or not message:
+        raise ValueError(
+            "Update doesn't contain chat info"
+        )
+
+    chat_id = update.effective_chat.id or message.chat_id
+    group = utils.get_chat_by_tg_chat(
+        chat_id=chat_id
+    )
+    if not group.subscription:
+        raise ValueError(
+            "Спочатку підпишіться завдяки:\n/start"
+        )
+
+    schedule = utils.Getter().get_schedule(
+        group=group.subscription.group
+    )
+    today_schedule = schedule.get_today_representation()
+
+    if not today_schedule:
+        await message.reply_text(
+            "День не було знайдено.\n"
+            "Якщо сьогодні неділя - все гаразд, скористайтеся /schedule\n"
+            "Якщо ж зараз інший день - повідомте @man_with_a_name"
+        )
+        return
+
+    if today_schedule.get_details():
+        await send_day_details(
+            day=today_schedule,
+            message=message,
+            send_new=True
+        )
