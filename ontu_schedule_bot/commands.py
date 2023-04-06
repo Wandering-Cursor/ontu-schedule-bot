@@ -567,7 +567,7 @@ async def update_notbot(_: ContextTypes.DEFAULT_TYPE) -> None:
     """
     await asyncio.sleep(0)
     logging.info("Updating notbot")
-    utils.Getter().get_faculties()
+    utils.Getter().update_notbot()
     logging.info("Finished updating notbot")
 
 

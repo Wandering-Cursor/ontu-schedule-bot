@@ -35,7 +35,7 @@ class BaseRequester:
 
     def make_request(self, endpoint: str, **kwargs):
         """Method for making and getting requests"""
-        method: str = self._method or kwargs.pop('method', '')
+        method: str = kwargs.pop('method', '') or self._method
         if not isinstance(method, (str, bytes, )):
             raise ValueError(
                 "Please don't override method with non str/bytes"
@@ -142,6 +142,26 @@ class Getter(BaseRequester):
 
         answer: dict = response.json()
         return classes.Schedule.from_json(answer)
+
+    def update_notbot(
+            self,) -> bool:
+        """Updates notbot on server side
+
+        Returns:
+            bool: Was notbot cookie updated. True - yes, False - no
+        """
+        try:
+            self.make_request(
+                endpoint=Endpoints.NOTBOT_GET.value,
+                method="GET"
+            )
+            return True
+        except (ValueError, requests.exceptions.RequestException, ConnectionError) as exception:
+            logging.exception(
+                "Exception occurred when updating notbot.\n%s",
+                exception
+            )
+            return False
 
 
 class Setter(BaseRequester):

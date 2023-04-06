@@ -21,6 +21,8 @@ class Endpoints(Enum):
 
     SCHEDULE_GET = "/api/schedule_get"
 
+    NOTBOT_GET = "/api/update_notbot"
+
 
 FACULTY_NAME_INDEX = 1
 PAGE_INDEX = 2
