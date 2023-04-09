@@ -17,6 +17,7 @@ class Lesson(BaseClass):
     full_name: str
     short_name: str
     lesson_info: str
+    auditorium: str | None = None
 
     @property
     def formatted_lesson_info(self) -> str:
@@ -33,7 +34,12 @@ class Lesson(BaseClass):
 
     @classmethod
     def from_json(cls, json_dict: dict):
-        required_params = ['date', 'teacher', 'lesson_name', 'lesson_info']
+        required_params = [
+            'date',
+            'teacher',
+            'lesson_name',
+            'lesson_info',
+        ]
 
         parsed_params = BaseClass._get_parameters(
             json_dict=json_dict,
@@ -51,6 +57,7 @@ class Lesson(BaseClass):
 
         obj = cls.make_object(parsed_params)
         obj.teacher = teacher
-        obj.full_name = lesson_name.get('full_name', '')
-        obj.short_name = lesson_name.get('short_name', '')
+        obj.full_name = lesson_name.get('full_name', '').strip()
+        obj.short_name = lesson_name.get('short_name', '').strip()
+        obj.auditorium = json_dict.get('auditorium', None)
         return obj
