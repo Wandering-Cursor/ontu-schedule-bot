@@ -153,7 +153,8 @@ class Getter(BaseRequester):
         try:
             self.make_request(
                 endpoint=Endpoints.NOTBOT_GET.value,
-                method="GET"
+                method="GET",
+                timeout=128
             )
             return True
         except (ValueError, requests.exceptions.RequestException, ConnectionError) as exception:

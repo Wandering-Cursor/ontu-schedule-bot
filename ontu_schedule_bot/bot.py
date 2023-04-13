@@ -136,7 +136,7 @@ def main() -> None:
 
     application.job_queue.run_repeating(
         commands.update_notbot,
-        interval=1800  # 30 * 60 = every 30 minutes
+        interval=3600  # 60 * 60 = every 60 minutes
     )
 
     application.run_polling()
