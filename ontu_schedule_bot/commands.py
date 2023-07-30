@@ -18,69 +18,49 @@ async def start_command(update: Update, _) -> None:
     if not telegram_chat:
         return
 
-    await telegram_chat.send_chat_action(
-        action="typing"
-    )
+    await telegram_chat.send_chat_action(action="typing")
 
     chat_entity = None
     try:
-        chat_entity = utils.Getter().get_chat(
-            telegram_chat.id
-        )
+        chat_entity = utils.Getter().get_chat(telegram_chat.id)
     except ValueError as error:
         print(error)
     if not chat_entity:
-        chat_entity = utils.Setter().new_chat(
-            chat=telegram_chat
-        )
+        chat_entity = utils.Setter().new_chat(chat=telegram_chat)
         if not isinstance(chat_entity, classes.Chat):
-            raise ValueError(
-                "Could not create chat for whatever reason!"
-            )
+            raise ValueError("Could not create chat for whatever reason!")
 
     keyboard = []
     if chat_entity.subscription:
         keyboard.append(
             [
-                InlineKeyboardButton(
-                    "Оновити отримання розкладу",
-                    callback_data=("set_group", )
-                ),
+                InlineKeyboardButton("Оновити отримання розкладу", callback_data=("set_group",)),
             ]
         )
         keyboard.append(
             [
                 InlineKeyboardButton(
                     text="Перемкнути отримання розкладу",
-                    callback_data=("toggle_subscription", chat_entity)
+                    callback_data=("toggle_subscription", chat_entity),
                 )
             ]
         )
     else:
         keyboard.append(
             [
-                InlineKeyboardButton(
-                    "Отримувати розклад",
-                    callback_data=("set_group", )
-                ),
+                InlineKeyboardButton("Отримувати розклад", callback_data=("set_group",)),
             ]
         )
 
     kwargs = {
         "text": "Чим можу допомогти?",
-        "reply_markup": InlineKeyboardMarkup(
-            inline_keyboard=keyboard
-        ),
+        "reply_markup": InlineKeyboardMarkup(inline_keyboard=keyboard),
     }
 
     if update.callback_query and update.callback_query.message:
-        await update.callback_query.message.edit_text(
-            **kwargs
-        )
+        await update.callback_query.message.edit_text(**kwargs)
     elif update.message:
-        await update.message.reply_html(
-            **kwargs
-        )
+        await update.message.reply_html(**kwargs)
 
 
 @decorators.reply_with_exception
@@ -96,36 +76,16 @@ async def faculty_select(update: Update, _):
     faculties = utils.Getter().get_faculties()
     for faculty in faculties:
         keyboard.append(
-            [
-                InlineKeyboardButton(
-                    faculty.name,
-                    callback_data=("pick_faculty", faculty.name)
-                )
-            ]
+            [InlineKeyboardButton(faculty.name, callback_data=("pick_faculty", faculty.name))]
         )
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                "Назад ⤴️",
-                callback_data=("start", )
-            )
-        ]
-    )
+    keyboard.append([InlineKeyboardButton("Назад ⤴️", callback_data=("start",))])
 
-    reply_markup = InlineKeyboardMarkup(
-        inline_keyboard=keyboard
-    )
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    await query.message.edit_text(text="Будь-ласка - оберіть факультет:", reply_markup=reply_markup)
 
 
-    await query.message.edit_text(
-        text="Будь-ласка - оберіть факультет:",
-        reply_markup=reply_markup
-    )
-
-
-def _back_forward_buttons_get(
-        page: int,
-        query_data: list) -> tuple[tuple, tuple]:
+def _back_forward_buttons_get(page: int, query_data: list) -> tuple[tuple, tuple]:
     """This method encapsulates logics to get forward and backwards buttons"""
     back_list: list[str | int] = query_data.copy()
     forward_list: list[str | int] = query_data.copy()
@@ -135,7 +95,7 @@ def _back_forward_buttons_get(
         forward_list[2] = page + 1
     else:
         back_list.append(page)
-        forward_list.append(page+1)
+        forward_list.append(page + 1)
     return tuple(back_list), tuple(forward_list)
 
 
@@ -162,55 +122,30 @@ async def group_select(update: Update, _) -> None:
 
     keyboard = []
 
-    groups = utils.Getter().get_groups(
-        faculty_name=data[enums.FACULTY_NAME_INDEX]
-    )
-    number_of_pages = utils.get_number_of_pages(
-        groups  # type: ignore
-    )
+    groups = utils.Getter().get_groups(faculty_name=data[enums.FACULTY_NAME_INDEX])
+    number_of_pages = utils.get_number_of_pages(groups)  # type: ignore
     current_page: list[classes.Group] = utils.get_current_page(
-        list_of_elements=groups,  # type: ignore
-        page=page
-    )
-    for group in current_page:
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    group.name,
-                    callback_data=("pick_group", group)
-                )
-            ]
-        )
-
-    back_tuple, forward_tuple = _back_forward_buttons_get(
+        list_of_elements=groups,
         page=page,
-        query_data=list(data)
-    )
+    )  # type: ignore
+    for group in current_page:
+        keyboard.append([InlineKeyboardButton(group.name, callback_data=("pick_group", group))])
+
+    back_tuple, forward_tuple = _back_forward_buttons_get(page=page, query_data=list(data))
 
     keyboard.append(
         [
-            InlineKeyboardButton(
-                "◀️",
-                callback_data=back_tuple
-            ),
-            InlineKeyboardButton(
-                "Назад ⤴️",
-                callback_data=("set_group", )
-            ),
-            InlineKeyboardButton(
-                "▶️",
-                callback_data=forward_tuple
-            ),
+            InlineKeyboardButton("◀️", callback_data=back_tuple),
+            InlineKeyboardButton("Назад ⤴️", callback_data=("set_group",)),
+            InlineKeyboardButton("▶️", callback_data=forward_tuple),
         ]
     )
 
-    reply_markup = InlineKeyboardMarkup(
-        inline_keyboard=keyboard
-    )
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     await query.message.edit_text(
         text=f"Тепер - оберіть групу\nCторінка {page+1}/{number_of_pages}",
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
     )
 
 
@@ -231,15 +166,9 @@ async def group_set(update: Update, _) -> None:
     data: tuple[str, classes.Group] = tuple(query.data)  # type: ignore
     group_index = 1
     group: classes.Group = data[group_index]
-    subscription = utils.Setter().set_chat_group(
-        chat=update.effective_chat,
-        group=group
-    )
+    subscription = utils.Setter().set_chat_group(chat=update.effective_chat, group=group)
     if isinstance(subscription, dict):
-        raise ValueError(
-            "Instead of subscription - got response from server",
-            subscription
-        )
+        raise ValueError("Instead of subscription - got response from server", subscription)
     await query.message.reply_html(
         "Відтепер ви будете отримувати розклад для групи: "
         f"{subscription.group.name} факультету {subscription.group.faculty.name}"
@@ -248,9 +177,8 @@ async def group_set(update: Update, _) -> None:
 
 @decorators.reply_with_exception
 async def pair_check_for_group(
-        chat: classes.Chat,
-        find_all: bool = False,
-        check_subscription_is_active: bool = False) -> str | bool:
+    chat: classes.Chat, find_all: bool = False, check_subscription_is_active: bool = False
+) -> str | bool:
     """
     Returns False if there's no pair, pair as string if there is a lesson
 
@@ -263,9 +191,7 @@ async def pair_check_for_group(
         if not chat.subscription.is_active:
             return False
 
-    schedule = utils.Getter().get_schedule(
-        chat.subscription.group
-    )
+    schedule = utils.Getter().get_schedule(chat.subscription.group)
 
     data = schedule.get_next_pair(find_all=find_all)
 
@@ -285,32 +211,22 @@ async def pair_check_per_chat(update: Update, _) -> None:
         return
 
     if update.effective_chat:
-        await update.effective_chat.send_chat_action(
-            action="typing"
-        )
+        await update.effective_chat.send_chat_action(action="typing")
 
     chat_id = update.effective_chat.id
-    chat = utils.get_chat_by_tg_chat(
-        chat_id=chat_id
-    )
+    chat = utils.get_chat_by_tg_chat(chat_id=chat_id)
 
     next_pair_text = await pair_check_for_group(
-        chat,
-        find_all=True,
-        check_subscription_is_active=False
+        chat, find_all=True, check_subscription_is_active=False
     )
     if next_pair_text is None:
         await update.message.reply_html(
             text="Не вдалося отримати наступну пару :(\nСпробуйте /start"
         )
     elif isinstance(next_pair_text, str):
-        await update.message.reply_html(
-            text=next_pair_text
-        )
+        await update.message.reply_html(text=next_pair_text)
     elif next_pair_text is False:
-        await update.message.reply_html(
-            text="У вас немає наступної пари"
-        )
+        await update.message.reply_html(text="У вас немає наступної пари")
 
 
 async def send_week_schedule(message: Message, week_schedule: list[classes.Day]):
@@ -318,12 +234,7 @@ async def send_week_schedule(message: Message, week_schedule: list[classes.Day])
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=day.get_brief(),
-                    callback_data=('day_details', day)
-                )
-            ]
+            [InlineKeyboardButton(text=day.get_brief(), callback_data=("day_details", day))]
             for day in week_schedule
         ]
     )
@@ -334,13 +245,9 @@ async def send_week_schedule(message: Message, week_schedule: list[classes.Day])
     }
 
     if message.from_user and message.from_user.is_bot:
-        await message.edit_text(
-            **kwargs
-        )
+        await message.edit_text(**kwargs)
     else:
-        await message.reply_html(
-            **kwargs
-        )
+        await message.reply_html(**kwargs)
 
 
 @decorators.reply_with_exception
@@ -352,37 +259,26 @@ async def get_schedule(update: Update, _) -> None:
         message = update.callback_query.message
 
     if update.effective_chat:
-        await update.effective_chat.send_chat_action(
-            action="typing"
-        )
+        await update.effective_chat.send_chat_action(action="typing")
 
     if not update.effective_chat or not message:
         return
 
     chat_id = update.effective_chat.id
-    group = utils.get_chat_by_tg_chat(
-        chat_id=chat_id
-    )
+    group = utils.get_chat_by_tg_chat(chat_id=chat_id)
     if not group.subscription:
-        raise ValueError("В чата немає підписки")
+        await message.reply_text("Будь-ласка, спочатку підпишіться за допомогою /start")
+        return
 
-    schedule = utils.Getter().get_schedule(
-        group=group.subscription.group
-    )
+    schedule = utils.Getter().get_schedule(group=group.subscription.group)
 
     week_schedule = schedule.get_week_representation()
 
-    await send_week_schedule(
-        message=message,
-        week_schedule=week_schedule
-    )
+    await send_week_schedule(message=message, week_schedule=week_schedule)
 
 
 @decorators.reply_with_exception
-async def send_day_details(
-        day: classes.Day,
-        message: Message,
-        send_new: bool = False):
+async def send_day_details(day: classes.Day, message: Message, send_new: bool = False):
     """A `helper` method to send details of the day
 
     Args:
@@ -399,24 +295,14 @@ async def send_day_details(
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    text=f"{pair.pair_no}",
-                    callback_data=("pair_details", pair, day)
+                    text=f"{pair.pair_no}", callback_data=("pair_details", pair, day)
                 )
             ]
         )
 
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                text="Назад ⤴️",
-                callback_data=("get_schedule", )
-            )
-        ]
-    )
+    keyboard.append([InlineKeyboardButton(text="Назад ⤴️", callback_data=("get_schedule",))])
 
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=keyboard
-    )
+    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     if not send_new:
         await message.edit_text(
@@ -448,10 +334,7 @@ async def get_day_details(update: Update, _):
 
     day = callback_data[1]
 
-    await send_day_details(
-        day=day,
-        message=query.message
-    )
+    await send_day_details(day=day, message=query.message)
 
 
 @decorators.reply_with_exception
@@ -468,45 +351,28 @@ async def get_pair_details(update: Update, _):
     pair = callback_data[1]
     day = callback_data[2]
 
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                text="Назад ⤴️",
-                callback_data=("day_details", day)
-            )
-        ]
-    ]
+    keyboard = [[InlineKeyboardButton(text="Назад ⤴️", callback_data=("day_details", day))]]
 
     await query.message.edit_text(
         text=pair.as_text(day_name=day.name),
         parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=keyboard
-        )
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
     )
 
 
 @decorators.reply_with_exception
-async def send_pair_check_result(
-        chat: classes.Chat,
-        context: ContextTypes.DEFAULT_TYPE):
+async def send_pair_check_result(chat: classes.Chat, context: ContextTypes.DEFAULT_TYPE):
     """
     Extracting this because I was hoping it'll run async, but it doesn't :)
     """
     result = await pair_check_for_group(
-        chat=chat,
-        find_all=False,
-        check_subscription_is_active=True
+        chat=chat, find_all=False, check_subscription_is_active=True
     )
 
     if not isinstance(result, str):
         return
 
-    utils.send_message_to_telegram(
-        bot_token=context.bot.token,
-        chat_id=chat.chat_id,
-        text=result
-    )
+    utils.send_message_to_telegram(bot_token=context.bot.token, chat_id=chat.chat_id, text=result)
 
 
 @decorators.reply_with_exception
@@ -514,10 +380,7 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
     """This method is used to check for upcoming pairs"""
     all_chats = utils.Getter().get_all_chats()
     for chat in all_chats:
-        await send_pair_check_result(
-            chat=chat,
-            context=context
-        )
+        await send_pair_check_result(chat=chat, context=context)
 
 
 @decorators.reply_with_exception
@@ -540,9 +403,7 @@ async def toggle_subscription(update: Update, _):
     new_status = not chat.subscription.is_active
 
     utils.Setter().set_chat_group(
-        chat=update.effective_chat,
-        group=chat.subscription.group,
-        is_active=new_status
+        chat=update.effective_chat, group=chat.subscription.group, is_active=new_status
     )
 
     if new_status:
@@ -550,10 +411,7 @@ async def toggle_subscription(update: Update, _):
     else:
         status = "вимкнена"
 
-    await query.answer(
-        text=f"Ваша підписка тепер {status}",
-        show_alert=True
-    )
+    await query.answer(text=f"Ваша підписка тепер {status}", show_alert=True)
 
     await start_command(update=update, _=_)
 
@@ -581,27 +439,18 @@ async def get_today(update: Update, _):
     """
     message = update.message
     if update.effective_chat:
-        await update.effective_chat.send_chat_action(
-            action="typing"
-        )
+        await update.effective_chat.send_chat_action(action="typing")
 
     if not update.effective_chat or not message:
-        raise ValueError(
-            "Update doesn't contain chat info"
-        )
+        raise ValueError("Update doesn't contain chat info")
 
     chat_id = update.effective_chat.id or message.chat_id
-    group = utils.get_chat_by_tg_chat(
-        chat_id=chat_id
-    )
+    group = utils.get_chat_by_tg_chat(chat_id=chat_id)
     if not group.subscription:
-        raise ValueError(
-            "Спочатку підпишіться завдяки:\n/start"
-        )
+        await message.reply_text("Будь-ласка, спочатку підпишіться за допомогою /start")
+        return
 
-    schedule = utils.Getter().get_schedule(
-        group=group.subscription.group
-    )
+    schedule = utils.Getter().get_schedule(group=group.subscription.group)
     today_schedule = schedule.get_today_representation()
 
     if not today_schedule:
@@ -613,8 +462,4 @@ async def get_today(update: Update, _):
         return
 
     if today_schedule.get_details():
-        await send_day_details(
-            day=today_schedule,
-            message=message,
-            send_new=True
-        )
+        await send_day_details(day=today_schedule, message=message, send_new=True)
