@@ -430,7 +430,7 @@ async def update_notbot(update: Update, _) -> None:
     utils.Getter().update_notbot()
     logging.info("Finished updating notbot")
     if update.message:
-        update.message.reply_test("Notbot was reset")
+        update.message.reply_text("Notbot was reset")
 
 
 @decorators.reply_with_exception

@@ -24,3 +24,4 @@ if not API_URL:
     with open('.env', 'a+', encoding='UTF-8') as file:
         file.write(f'DEBUG_CHAT_ID={DEBUG_CHAT_ID}\n')
     print("Saved DEBUG_CHAT_ID to .env")
+DEBUG_CHAT_ID = int(DEBUG_CHAT_ID)
