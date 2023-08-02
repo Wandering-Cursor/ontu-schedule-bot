@@ -1,5 +1,4 @@
 """This module contains all the commands bot may execute"""
-import asyncio
 import logging
 
 from telegram import InlineKeyboardButton, Update, InlineKeyboardMarkup, Message
@@ -9,6 +8,8 @@ import utils
 import classes
 import enums
 import decorators
+
+from secret_config import DEBUG_CHAT_ID
 
 
 @decorators.reply_with_exception
@@ -417,16 +418,20 @@ async def toggle_subscription(update: Update, _):
 
 
 @decorators.reply_with_exception
-async def update_notbot(_: ContextTypes.DEFAULT_TYPE) -> None:
+async def update_notbot(update: Update, _) -> None:
     """
     A method to update notbot with hope to reduce waiting time on average
     Args:
         _ (ContextTypes.DEFAULT_TYPE): Context, that's passed when calling for task
     """
-    await asyncio.sleep(0)
+    if update.effective_chat.id != DEBUG_CHAT_ID:
+        return
+
     logging.info("Updating notbot")
     utils.Getter().update_notbot()
     logging.info("Finished updating notbot")
+    if update.message:
+        update.message.reply_test("Notbot was reset")
 
 
 @decorators.reply_with_exception

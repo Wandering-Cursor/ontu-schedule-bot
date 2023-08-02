@@ -120,6 +120,13 @@ def main() -> None:
         )
     )
 
+    application.add_handler(
+        CommandHandler(
+            command="update_notbot",
+            callback=commands.update_notbot
+        )
+    )
+
     if not isinstance(application.job_queue, JobQueue):
         logger.error("Application doesn't have job_queue")
         return
