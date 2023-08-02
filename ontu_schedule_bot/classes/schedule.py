@@ -1,5 +1,6 @@
 """Describes schedule"""
 import datetime
+import pytz
 
 from classes.base import BaseClass, pair_times
 
@@ -124,7 +125,7 @@ class Schedule(BaseClass):
                 If it's past sixth pair of monday - will return third pair for friday
             If no pairs can be found still - raises a ValueError
         """
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(tz=pytz.timezone("Europe/Kyiv"))
         hour_minute_tuple = (now.hour, now.minute)
 
         initial_day_no = now.weekday()
