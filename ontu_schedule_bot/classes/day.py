@@ -41,14 +41,14 @@ class Day(BaseClass):
         if not active_pairs:
             return f"{self.name} - немає пар"
 
-        first: Pair = min(active_pairs, key=attrgetter('pair_no'))
-        last: Pair = max(active_pairs, key=attrgetter('pair_no'))
+        first: Pair = min(active_pairs, key=attrgetter("pair_no"))
+        last: Pair = max(active_pairs, key=attrgetter("pair_no"))
 
         return SUMMARY.format(
             day=self.name,
             pairs=len(active_pairs),
             first=first.pair_no,
-            last=last.pair_no
+            last=last.pair_no,
         )
 
     def get_details(self) -> OrderedDict[Pair, str]:
@@ -62,7 +62,7 @@ class Day(BaseClass):
             pairs[pair] = PAIR_SUMMARY.format(
                 no=pair.pair_no,
                 short_name=lesson.short_name,
-                teacher=lesson.teacher.short_name
+                teacher=lesson.teacher.short_name,
             )
 
         return pairs

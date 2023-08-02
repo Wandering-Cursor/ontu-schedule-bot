@@ -4,11 +4,13 @@ from enum import Enum
 
 class Statuses(Enum):
     """Conains all statuses that backend may give"""
+
     OK = "ok"
 
 
 class Endpoints(Enum):
     """Contains all used endpoints"""
+
     CHAT_INFO = "/api/chat_info"
     CHAT_CREATE = "/api/chat_create"
     CHAT_UPDATE = "/api/chat_update"
@@ -22,6 +24,7 @@ class Endpoints(Enum):
     SCHEDULE_GET = "/api/schedule_get"
 
     NOTBOT_GET = "/api/update_notbot"
+    CACHE_RESET = "/api/reset_cache"
 
 
 FACULTY_NAME_INDEX = 1

@@ -5,12 +5,13 @@ from classes.base import BaseClass
 
 class Teacher(BaseClass):
     """A teacher is just a container for two names"""
+
     full_name: str
     short_name: str
 
     @classmethod
     def from_json(cls, json_dict: dict):
-        required_params = ['full_name', 'short_name']
+        required_params = ["full_name", "short_name"]
 
         parsed_params = BaseClass._get_parameters(
             json_dict=json_dict,

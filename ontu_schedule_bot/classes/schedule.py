@@ -37,42 +37,41 @@ def _next_pair_no_from_time(hour_minute_tuple: tuple[int, int]) -> int:
 
 class Schedule(BaseClass):
     """
-        Schedule dataclass
-        Schedule keeps days (week to be precise)
-        Days keep pairs
-        Pairs - lessons
+    Schedule dataclass
+    Schedule keeps days (week to be precise)
+    Days keep pairs
+    Pairs - lessons
 
-        This class provides a method to get next pair
-        (and will provide a way to get a schedule for whole week later on)
+    This class provides a method to get next pair
+    (and will provide a way to get a schedule for whole week later on)
     """
+
     days: dict[str, list[Pair]]
 
     day_names = day_names
 
     @classmethod
     def from_json(cls, json_dict: dict):
-        required_params = ['days']
+        required_params = ["days"]
 
         parsed_params = BaseClass._get_parameters(
-            json_dict=json_dict,
-            required_params=required_params
+            json_dict=json_dict, required_params=required_params
         )
 
         days: dict[str, list[Pair]] = {}
-        json_days: dict[str, list[dict]] = parsed_params.pop('days')
+        json_days: dict[str, list[dict]] = parsed_params.pop("days")
         for day_name, pairs in json_days.items():
-            days[day_name] = [
-                Pair.from_json(pair) for pair in pairs
-            ]
+            days[day_name] = [Pair.from_json(pair) for pair in pairs]
 
         obj = cls.make_object(parsed_params)
         obj.days = days
         return obj
 
     def _get_next_pair_index(
-            self,
-            pair_no: int | None = None,
-            hour_minute_tuple: tuple[int, int] | None = None) -> tuple[int, bool]:
+        self,
+        pair_no: int | None = None,
+        hour_minute_tuple: tuple[int, int] | None = None,
+    ) -> tuple[int, bool]:
         """If we know pair_no - return the next pair"""
         next_pair_no = None
         day_changed = False
@@ -83,7 +82,9 @@ class Schedule(BaseClass):
             next_pair_no = _next_pair_no_from_time(hour_minute_tuple)
 
         if next_pair_no is None:
-            raise ValueError("Could not get_next_pair_index", pair_no, hour_minute_tuple)
+            raise ValueError(
+                "Could not get_next_pair_index", pair_no, hour_minute_tuple
+            )
 
         if next_pair_no < 0 or next_pair_no > MAX_PAIRS:
             # Basically if next_pair_no_from_time returns -1 - it means it's not today
@@ -99,7 +100,9 @@ class Schedule(BaseClass):
             day_no = 0
         return day_no
 
-    def _check_should_stop(self, next_pair: Pair | None, day_no: int, initial_day_no: int):
+    def _check_should_stop(
+        self, next_pair: Pair | None, day_no: int, initial_day_no: int
+    ):
         if next_pair:
             return True
         day_no = self.__get_next_day(day_no=day_no)
@@ -107,20 +110,26 @@ class Schedule(BaseClass):
             return True
         return False
 
-    def get_next_pair(
-            self,
-            find_all: bool = True) -> tuple[Pair, str] | None:
+    def _get_initial(
+        self, initial_day_no: int, initial_pair_no: int, day_changed: bool
+    ) -> tuple[int, int]:
+        if day_changed:
+            initial_day_no = self.__get_next_day(day_no=initial_day_no)
+            initial_pair_no = 0
+        return initial_day_no, initial_pair_no
+
+    def get_next_pair(self, find_all: bool = True) -> tuple[Pair, str] | None:
         """
-            Returns next pair
-            First - tries to get the actual next pair with lessons
-                Like if it's 11:00 - tries to get 11:30 pair
-            If fails - tries to get the next pair with lessons in a day
-                For example - students have first and sixth pairs,
-                if it's past first pair - will return sixth one
-            If fails still - tries to get the next pair from next pair, going trough a week
-                For example - students have pairs in monday (1st and 6th), and in friday (3rd)
-                If it's past sixth pair of monday - will return third pair for friday
-            If no pairs can be found still - raises a ValueError
+        Returns next pair
+        First - tries to get the actual next pair with lessons
+            Like if it's 11:00 - tries to get 11:30 pair
+        If fails - tries to get the next pair with lessons in a day
+            For example - students have first and sixth pairs,
+            if it's past first pair - will return sixth one
+        If fails still - tries to get the next pair from next pair, going trough a week
+            For example - students have pairs in monday (1st and 6th), and in friday (3rd)
+            If it's past sixth pair of monday - will return third pair for friday
+        If no pairs can be found still - raises a ValueError
         """
         now = datetime.datetime.now(tz=pytz.timezone("Europe/Kyiv"))
         hour_minute_tuple = (now.hour, now.minute)
@@ -133,7 +142,11 @@ class Schedule(BaseClass):
         if not find_all and day_changed:
             return None
 
-        day_no, pair_no = initial_day_no, initial_pair_no
+        day_no, pair_no = self._get_initial(
+            initial_day_no=initial_day_no,
+            initial_pair_no=initial_pair_no,
+            day_changed=day_changed,
+        )
 
         next_pair = None
         while True:
@@ -157,19 +170,14 @@ class Schedule(BaseClass):
                 if not find_all:
                     return None
             if self._check_should_stop(
-                    next_pair=next_pair,
-                    day_no=day_no,
-                    initial_day_no=initial_day_no):
+                next_pair=next_pair, day_no=day_no, initial_day_no=initial_day_no
+            ):
                 break
             day_no = self.__get_next_day(day_no=day_no)
             pair_no = 0
 
         if not next_pair:
-            raise ValueError(
-                "Could not get next pair",
-                pairs_of_day,
-                pair_no
-            )
+            raise ValueError("Could not get next pair", pairs_of_day, pair_no)
 
         return next_pair, day_names.get(day_no, "")
 
@@ -177,17 +185,12 @@ class Schedule(BaseClass):
         """Returns a list of days represented as strings"""
         days: list[Day] = []
         for day_name, pairs in self.days.items():
-            days.append(
-                Day(
-                    day_name=day_name,
-                    pairs=pairs
-                )
-            )
+            days.append(Day(day_name=day_name, pairs=pairs))
         return days
 
     def get_today_representation(
-            self,
-            today: datetime.date | None = None) -> Day | None:
+        self, today: datetime.date | None = None
+    ) -> Day | None:
         """Method to get schedule of current day
         You can override what `current` means
 

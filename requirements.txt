@@ -8,3 +8,4 @@ python-decouple
 
 pylint
 isort
+black
