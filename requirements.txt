@@ -5,3 +5,5 @@ requests
 python-decouple==3.7
 APScheduler==3.10.0
 python-decouple
+
+pylint
