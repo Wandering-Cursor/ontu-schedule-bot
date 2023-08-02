@@ -3,7 +3,6 @@ import datetime
 import re
 
 from classes.base import BaseClass
-
 from classes.teacher import Teacher
 
 

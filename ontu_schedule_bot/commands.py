@@ -1,15 +1,14 @@
 """This module contains all the commands bot may execute"""
 import logging
 
-from telegram import InlineKeyboardButton, Update, InlineKeyboardMarkup, Message
-from telegram.ext import ContextTypes
-
-import utils
 import classes
-import enums
 import decorators
-
+import enums
+import utils
 from secret_config import DEBUG_CHAT_ID
+from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Message,
+                      Update)
+from telegram.ext import ContextTypes
 
 
 @decorators.reply_with_exception

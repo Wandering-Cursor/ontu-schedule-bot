@@ -2,6 +2,7 @@
 
 from classes.base import BaseClass
 
+
 class Faculty(BaseClass):
     """Faculty - An object on Rozklad site with a name, has some groups"""
     name: str

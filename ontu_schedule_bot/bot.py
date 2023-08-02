@@ -2,21 +2,13 @@
 import datetime
 import logging
 
-from secret_config import API_TOKEN
+import classes
 import commands
 import patterns
-
 import pytz
-
-import classes
-
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    PicklePersistence,
-    JobQueue
-)
+from secret_config import API_TOKEN
+from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
+                          JobQueue, PicklePersistence)
 
 # Enable logging
 logging.basicConfig(

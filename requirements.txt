@@ -7,3 +7,4 @@ APScheduler==3.10.0
 python-decouple
 
 pylint
+isort
