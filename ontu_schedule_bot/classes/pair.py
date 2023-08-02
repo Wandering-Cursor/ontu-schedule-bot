@@ -1,6 +1,5 @@
 """Describes pair"""
-from classes.base import BaseClass, pair_times, pair_end_times
-
+from classes.base import BaseClass, pair_end_times, pair_times
 from classes.lesson import Lesson
 
 MESSAGE_FORMAT = """

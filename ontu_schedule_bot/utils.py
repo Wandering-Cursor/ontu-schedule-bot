@@ -1,15 +1,13 @@
 """This is a utils module, it contains Requests and pagination for bot"""
-from urllib.parse import urljoin
-import math
 import logging
-import requests
-
-from secret_config import API_URL
-from enums import Statuses, Endpoints
+import math
+from urllib.parse import urljoin
 
 import classes
-
+import requests
 import telegram
+from enums import Endpoints, Statuses
+from secret_config import API_URL
 
 
 # region Requests

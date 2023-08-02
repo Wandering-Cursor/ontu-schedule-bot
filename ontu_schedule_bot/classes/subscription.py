@@ -1,8 +1,8 @@
 """This module describes subscription class"""
 
 from classes.base import BaseClass
-
 from classes.group import Group
+
 
 class Subscription(BaseClass):
     """Class for subscription to some group's schedule"""

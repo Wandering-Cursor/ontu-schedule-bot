@@ -1,12 +1,10 @@
 """Module of a day class (Day - a set of pairs for a day of a week)"""
 
-from operator import attrgetter
 from collections import OrderedDict
+from operator import attrgetter
 
 from classes.base import BaseClass
-
 from classes.pair import Pair
-
 
 SUMMARY = "{day} - {pairs} пари ({first} - {last})"
 

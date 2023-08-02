@@ -3,12 +3,10 @@ import asyncio
 import logging
 from typing import Callable
 
-from telegram import Update
-
 from requests.exceptions import RequestException
-
-from utils import split_string, send_message_to_telegram
 from secret_config import DEBUG_CHAT_ID
+from telegram import Update
+from utils import send_message_to_telegram, split_string
 
 
 def _print(exception: Exception) -> str:

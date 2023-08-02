@@ -1,13 +1,10 @@
 """Describes schedule"""
 import datetime
+
 import pytz
-
 from classes.base import BaseClass, pair_times
-
-from classes.pair import Pair
-
 from classes.day import Day
-
+from classes.pair import Pair
 
 MAX_PAIRS = 6
 
