@@ -19,6 +19,7 @@ LESSON_FORMAT = """
 
 class Pair(BaseClass):
     """Pair class that keeps a list of lessons (because schedule is weird)"""
+
     lessons: list[Lesson]
     pair_no: int
 
@@ -31,7 +32,7 @@ class Pair(BaseClass):
 
     @classmethod
     def from_json(cls, json_dict: dict):
-        required_params = ['lessons', 'pair_no']
+        required_params = ["lessons", "pair_no"]
 
         parsed_params = BaseClass._get_parameters(
             json_dict=json_dict,
@@ -39,15 +40,9 @@ class Pair(BaseClass):
         )
 
         lessons: list[Lesson] = []
-        json_lessons: list[dict] = parsed_params.pop(
-            'lessons'
-        )
+        json_lessons: list[dict] = parsed_params.pop("lessons")
         for json_data in json_lessons:
-            lessons.append(
-                Lesson.from_json(
-                    json_data
-                )
-            )
+            lessons.append(Lesson.from_json(json_data))
 
         obj = cls.make_object(parsed_params)
         obj.lessons = lessons
@@ -78,11 +73,11 @@ class Pair(BaseClass):
 
         message = MESSAGE_FORMAT.format(
             pair_no=self.pair_no,
-            hour_0=str(time_start['hour']).zfill(2),
-            minute_0=str(time_start['minute']).zfill(2),
-            hour_1=str(time_end['hour']).zfill(2),
-            minute_1=str(time_end['minute']).zfill(2),
+            hour_0=str(time_start["hour"]).zfill(2),
+            minute_0=str(time_start["minute"]).zfill(2),
+            hour_1=str(time_end["hour"]).zfill(2),
+            minute_1=str(time_end["minute"]).zfill(2),
             day_name=day_name or "",
-            lessons=lessons_string
+            lessons=lessons_string,
         )
         return message

@@ -63,3 +63,11 @@ def toggle_subscription_pattern(callback_data):
         if callback_data[0] == "toggle_subscription":
             return True
     return False
+
+
+def update_cache_pattern(callback_data):
+    """Pattern for update_cache"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "update_cache":
+            return True
+    return False

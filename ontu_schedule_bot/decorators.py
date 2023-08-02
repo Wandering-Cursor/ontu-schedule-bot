@@ -23,6 +23,7 @@ def reply_with_exception(func: Callable):
     """
     If while processing a call ValueError occurs - tries to reply with text to a message
     """
+
     async def inner(*args, **kwargs):
         logging.info(
             "Running `%s` with `reply_with_exception` decorator.\n"
@@ -36,9 +37,7 @@ def reply_with_exception(func: Callable):
             value = await func(*args, **kwargs)
             return value
         except (ValueError, RequestException) as exception:
-            logging.exception(
-                msg=f"Exception in {func}\n{exception}"
-            )
+            logging.exception(msg=f"Exception in {func}\n{exception}")
             update = kwargs.pop("update", None)
             for arg in args:
                 if isinstance(arg, Update):
@@ -57,20 +56,15 @@ def reply_with_exception(func: Callable):
 
             text_full = "Виникла помилка:\n"
             text_full += str(exception.args) + "\n"
-            text_full += str(
-                f"Arguments of `{func.__name__}`:\n"
-                f"{(args, kwargs)}"
-            )
-            texts = split_string(
-                string=text_full
-            )
+            text_full += str(f"Arguments of `{func.__name__}`:\n" f"{(args, kwargs)}")
+            texts = split_string(string=text_full)
 
             for text in texts:
                 send_message_to_telegram(
                     bot_token=update.get_bot().token,
                     chat_id=DEBUG_CHAT_ID,
                     text=text,
-                    parse_mode=""
+                    parse_mode="",
                 )
                 await asyncio.sleep(0.2)
 
@@ -82,4 +76,5 @@ def reply_with_exception(func: Callable):
             await message.reply_text(
                 text=short_text,
             )
+
     return inner
