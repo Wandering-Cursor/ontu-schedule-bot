@@ -221,11 +221,11 @@ async def pair_check_for_group(
     If check_subscription_is_active is True - if subscription is not active - will not send anything
     """
     if not chat.subscription:
-        return False
+        return False, "Немає підписки"
 
     if check_subscription_is_active:
         if not chat.subscription.is_active:
-            return False
+            return False, "Підписка не активна"
 
     schedule = utils.Getter().get_schedule(chat.subscription.group)
 
