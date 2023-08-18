@@ -275,9 +275,9 @@ async def send_week_schedule(
     """Common sender"""
 
     message_text = "Розклад:"
-    update_notbot = []
+    notbot_keyboard = []
     if not is_updated:
-        update_notbot = [
+        notbot_keyboard = [
             [
                 InlineKeyboardButton(
                     text="Оновити кеш 🔃", callback_data=("update_cache", group)
@@ -292,7 +292,7 @@ async def send_week_schedule(
         for day in week_schedule
     ]
 
-    inline_keyboard = days + update_notbot
+    inline_keyboard = days + notbot_keyboard
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 

@@ -109,8 +109,14 @@ class Schedule(BaseClass):
         if day_no == initial_day_no:
             return True, "Немає розкладу на весь тиждень"
         if day_no < initial_day_no:
-            return True, "Наступна пара в понеділок (очікуйте неділі для перегляду розкладу)"
-        return False, "Якщо ви це бачите, то когось треба лупити. Пишіть @man_with_a_name"
+            return (
+                True,
+                "Наступна пара в понеділок (очікуйте неділі для перегляду розкладу)",
+            )
+        return (
+            False,
+            "Якщо ви це бачите, то когось треба лупити. Пишіть @man_with_a_name",
+        )
 
     def _get_initial(
         self, initial_day_no: int, initial_pair_no: int, day_changed: bool
