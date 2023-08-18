@@ -131,6 +131,8 @@ class Schedule(BaseClass):
             If it's past sixth pair of monday - will return third pair for friday
         If no pairs can be found still - raises a ValueError
         """
+        # pylint: disable = R0911, R0912
+        # Refactor this method
         now = datetime.datetime.now(tz=pytz.timezone("Europe/Kyiv"))
         hour_minute_tuple = (now.hour, now.minute)
 
@@ -155,6 +157,10 @@ class Schedule(BaseClass):
                 return None
             if not pairs_of_day:
                 day_no = self.__get_next_day(day_no=day_no)
+                if not self._check_should_stop(
+                    next_pair=next_pair, day_no=day_no, initial_day_no=initial_day_no
+                ):
+                    return None
                 pair_no = 0
                 continue
             for pair in pairs_of_day:
@@ -177,7 +183,7 @@ class Schedule(BaseClass):
             pair_no = 0
 
         if not next_pair:
-            raise ValueError("Could not get next pair", pairs_of_day, pair_no)
+            return None
 
         return next_pair, day_names.get(day_no, "")
 
