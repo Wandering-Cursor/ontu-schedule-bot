@@ -168,7 +168,7 @@ async def group_select(update: Update, _) -> None:
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     await query.message.edit_text(
-        text=f"Тепер - оберіть групу\nCторінка {page+1}/{number_of_pages}",
+        text=f"Тепер - оберіть групу\nСторінка {page+1}/{number_of_pages}",
         reply_markup=reply_markup,
     )
 
@@ -214,30 +214,27 @@ async def pair_check_for_group(
     chat: classes.Chat,
     find_all: bool = False,
     check_subscription_is_active: bool = False,
-) -> str | bool:
+) -> tuple[bool, str]:
     """
     Returns False if there's no pair, pair as string if there is a lesson
 
     If check_subscription_is_active is True - if subscription is not active - will not send anything
     """
     if not chat.subscription:
-        return False
+        return False, "Немає підписки"
 
     if check_subscription_is_active:
         if not chat.subscription.is_active:
-            return False
+            return False, "Підписка не активна"
 
     schedule = utils.Getter().get_schedule(chat.subscription.group)
 
-    data = schedule.get_next_pair(find_all=find_all)
+    pair, string = schedule.get_next_pair(find_all=find_all)
 
-    if not data:
-        return False
+    if not pair:
+        return False, string
 
-    next_pair = data[0]
-    day_name = data[1]
-
-    return next_pair.as_text(day_name=day_name)
+    return True, pair.as_text(day_name=string)
 
 
 @decorators.reply_with_exception
@@ -252,17 +249,20 @@ async def pair_check_per_chat(update: Update, _) -> None:
     chat_id = update.effective_chat.id
     chat = utils.get_chat_by_tg_chat(chat_id=chat_id)
 
-    next_pair_text = await pair_check_for_group(
+    got_pair, next_pair_text = await pair_check_for_group(
         chat, find_all=True, check_subscription_is_active=False
     )
-    if next_pair_text is None:
+    if not got_pair:
         await update.message.reply_html(
-            text="Не вдалося отримати наступну пару :(\nСпробуйте /start"
+            text=(
+                "Не вдалося отримати наступну пару. Можлива причина:"
+                f"\n\n{next_pair_text}"
+                "\n\n<i>(Перевірте /schedule)</i>"
+            )
         )
-    elif isinstance(next_pair_text, str):
-        await update.message.reply_html(text=next_pair_text)
-    elif next_pair_text is False:
-        await update.message.reply_html(text="У вас немає наступної пари")
+        return
+
+    await update.message.reply_html(text=next_pair_text)
 
 
 @decorators.reply_with_exception
@@ -275,9 +275,9 @@ async def send_week_schedule(
     """Common sender"""
 
     message_text = "Розклад:"
-    upadte_notbot = []
+    notbot_keyboard = []
     if not is_updated:
-        upadte_notbot = [
+        notbot_keyboard = [
             [
                 InlineKeyboardButton(
                     text="Оновити кеш 🔃", callback_data=("update_cache", group)
@@ -292,7 +292,7 @@ async def send_week_schedule(
         for day in week_schedule
     ]
 
-    inline_keyboard = days + upadte_notbot
+    inline_keyboard = days + notbot_keyboard
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
@@ -463,15 +463,15 @@ async def send_pair_check_result(
     """
     Extracting this because I was hoping it'll run async, but it doesn't :)
     """
-    result = await pair_check_for_group(
+    got_pair, text = await pair_check_for_group(
         chat=chat, find_all=False, check_subscription_is_active=True
     )
 
-    if not isinstance(result, str):
+    if not got_pair:
         return
 
     utils.send_message_to_telegram(
-        bot_token=context.bot.token, chat_id=chat.chat_id, text=result
+        bot_token=context.bot.token, chat_id=chat.chat_id, text=text
     )
 
 

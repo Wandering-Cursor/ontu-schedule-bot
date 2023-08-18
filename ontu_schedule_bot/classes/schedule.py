@@ -13,7 +13,7 @@ day_names = {
     1: "Вівторок",
     2: "Середа",
     3: "Четвер",
-    4: "П`ятниця",
+    4: "П'ятниця",
     5: "Субота",
     6: "Неділя",
 }
@@ -102,13 +102,22 @@ class Schedule(BaseClass):
 
     def _check_should_stop(
         self, next_pair: Pair | None, day_no: int, initial_day_no: int
-    ):
+    ) -> tuple[bool, str]:
         if next_pair:
-            return True
+            return True, "Пару знайдено"
         day_no = self.__get_next_day(day_no=day_no)
         if day_no == initial_day_no:
-            return True
-        return False
+            return True, "Немає розкладу на весь тиждень"
+        if day_no < initial_day_no:
+            if initial_day_no != 6:
+                return (
+                    True,
+                    "Наступна пара в понеділок (очікуйте неділі для перегляду розкладу)",
+                )
+        return (
+            False,
+            "Якщо ви це бачите, то когось треба лупити. Пишіть @man_with_a_name",
+        )
 
     def _get_initial(
         self, initial_day_no: int, initial_pair_no: int, day_changed: bool
@@ -118,7 +127,7 @@ class Schedule(BaseClass):
             initial_pair_no = 0
         return initial_day_no, initial_pair_no
 
-    def get_next_pair(self, find_all: bool = True) -> tuple[Pair, str] | None:
+    def get_next_pair(self, find_all: bool = True) -> tuple[Pair | None, str] | None:
         """
         Returns next pair
         First - tries to get the actual next pair with lessons
@@ -157,10 +166,11 @@ class Schedule(BaseClass):
                 return None
             if not pairs_of_day:
                 day_no = self.__get_next_day(day_no=day_no)
-                if not self._check_should_stop(
+                should_stop, message = self._check_should_stop(
                     next_pair=next_pair, day_no=day_no, initial_day_no=initial_day_no
-                ):
-                    return None
+                )
+                if should_stop:
+                    return None, message
                 pair_no = 0
                 continue
             for pair in pairs_of_day:
@@ -175,17 +185,15 @@ class Schedule(BaseClass):
                 # If we don't need to find pair in all time
                 if not find_all:
                     return None
-            if self._check_should_stop(
+            should_stop, message = self._check_should_stop(
                 next_pair=next_pair, day_no=day_no, initial_day_no=initial_day_no
-            ):
-                break
+            )
+            if should_stop:
+                return None, message
+            if next_pair:
+                return next_pair, day_names.get(day_no, "")
             day_no = self.__get_next_day(day_no=day_no)
             pair_no = 0
-
-        if not next_pair:
-            return None
-
-        return next_pair, day_names.get(day_no, "")
 
     def get_week_representation(self) -> list[Day]:
         """Returns a list of days represented as strings"""
