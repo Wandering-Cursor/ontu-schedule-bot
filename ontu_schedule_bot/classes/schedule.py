@@ -132,7 +132,7 @@ class Schedule(BaseClass):
         If no pairs can be found still - raises a ValueError
         """
         # pylint: disable = R0911, R0912
-        # FIXME: Refactor this method
+        # Refactor this method
         now = datetime.datetime.now(tz=pytz.timezone("Europe/Kyiv"))
         hour_minute_tuple = (now.hour, now.minute)
 
