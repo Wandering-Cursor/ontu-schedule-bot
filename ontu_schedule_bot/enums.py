@@ -3,7 +3,7 @@ from enum import Enum
 
 
 class Statuses(Enum):
-    """Conains all statuses that backend may give"""
+    """Contains all statuses that backend may give"""
 
     OK = "ok"
 
