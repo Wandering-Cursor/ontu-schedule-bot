@@ -131,6 +131,8 @@ class Schedule(BaseClass):
             If it's past sixth pair of monday - will return third pair for friday
         If no pairs can be found still - raises a ValueError
         """
+        # pylint: disable = R0911, R0912
+        # FIXME: Refactor this method
         now = datetime.datetime.now(tz=pytz.timezone("Europe/Kyiv"))
         hour_minute_tuple = (now.hour, now.minute)
 
