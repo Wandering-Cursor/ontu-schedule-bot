@@ -96,7 +96,7 @@ class Schedule(BaseClass):
 
     def __get_next_day(self, day_no: int):
         day_no += 1
-        if day_no >= 6:
+        if day_no > 6:
             day_no = 0
         return day_no
 
@@ -188,10 +188,10 @@ class Schedule(BaseClass):
             should_stop, message = self._check_should_stop(
                 next_pair=next_pair, day_no=day_no, initial_day_no=initial_day_no
             )
-            if should_stop:
-                return None, message
             if next_pair:
                 return next_pair, day_names.get(day_no, "")
+            if not next_pair and should_stop:
+                return None, message
             day_no = self.__get_next_day(day_no=day_no)
             pair_no = 0
 
