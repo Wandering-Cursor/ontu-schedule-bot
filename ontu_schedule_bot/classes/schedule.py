@@ -127,7 +127,7 @@ class Schedule(BaseClass):
             initial_pair_no = 0
         return initial_day_no, initial_pair_no
 
-    def get_next_pair(self, find_all: bool = True) -> tuple[Pair | None, str] | None:
+    def get_next_pair(self, find_all: bool = True) -> tuple[Pair | None, str]:
         """
         Returns next pair
         First - tries to get the actual next pair with lessons
@@ -151,7 +151,7 @@ class Schedule(BaseClass):
         )
 
         if not find_all and day_changed:
-            return None
+            return None, ""
 
         day_no, pair_no = self._get_initial(
             initial_day_no=initial_day_no,
@@ -163,7 +163,7 @@ class Schedule(BaseClass):
         while True:
             pairs_of_day = self.days.get(day_names.get(day_no, ""))
             if not pairs_of_day and not find_all:
-                return None
+                return None, ""
             if not pairs_of_day:
                 day_no = self.__get_next_day(day_no=day_no)
                 should_stop, message = self._check_should_stop(
@@ -180,11 +180,11 @@ class Schedule(BaseClass):
                         break
                     # If pair exists, but there's no lesson
                     if not find_all:
-                        return None
+                        return None, ""
             else:
                 # If we don't need to find pair in all time
                 if not find_all:
-                    return None
+                    return None, ""
             should_stop, message = self._check_should_stop(
                 next_pair=next_pair, day_no=day_no, initial_day_no=initial_day_no
             )
