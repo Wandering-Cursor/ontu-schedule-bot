@@ -480,7 +480,20 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
     """This method is used to check for upcoming pairs"""
     all_chats = utils.Getter().get_all_chats()
     for chat in all_chats:
-        await send_pair_check_result(chat=chat, context=context)
+        try:
+            await send_pair_check_result(chat=chat, context=context)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logging.exception(exc)
+            decorators.send_exception(
+                update=None,
+                exception=exc,
+                func=send_pair_check_result,
+                bot_token=context.bot.token,
+                kwargs={
+                    "chat": chat,
+                    "context": context,
+                },
+            )
 
 
 @decorators.reply_with_exception
