@@ -1,5 +1,6 @@
 """Describes schedule"""
 import datetime
+import logging
 
 import pytz
 from classes.base import BaseClass, pair_times
@@ -142,16 +143,20 @@ class Schedule(BaseClass):
         """
         # pylint: disable = R0911, R0912
         # Refactor this method
+        logging.debug(f"Getting next pair: {str(self)} {find_all}")
         now = datetime.datetime.now(tz=pytz.timezone("Europe/Kyiv"))
         hour_minute_tuple = (now.hour, now.minute)
+        logging.debug(f"Hour minute tuple: {hour_minute_tuple}")
 
         initial_day_no = now.weekday()
         initial_pair_no, day_changed = self._get_next_pair_index(
             hour_minute_tuple=hour_minute_tuple
         )
 
+        logging.debug(f"{initial_day_no=} {initial_pair_no=} {day_changed=}")
+
         if not find_all and day_changed:
-            return None, ""
+            return None, "Day Changed"
 
         day_no, pair_no = self._get_initial(
             initial_day_no=initial_day_no,
@@ -159,11 +164,15 @@ class Schedule(BaseClass):
             day_changed=day_changed,
         )
 
+        logging.debug(f"Starting with {day_no=} {pair_no=}")
+
         next_pair = None
         while True:
+            logging.debug(f"Trying to get pair: {day_no=} {pair_no=}")
             pairs_of_day = self.days.get(day_names.get(day_no, ""))
+            logging.debug(f"{pairs_of_day=}")
             if not pairs_of_day and not find_all:
-                return None, ""
+                return None, "No pairs for today, no find_all"
             if not pairs_of_day:
                 day_no = self.__get_next_day(day_no=day_no)
                 should_stop, message = self._check_should_stop(
@@ -183,16 +192,20 @@ class Schedule(BaseClass):
                         return None, ""
             else:
                 # If we don't need to find pair in all time
+                logging.debug(f"Pair not found in {day_no=} {pair_no=}")
                 if not find_all:
-                    return None, ""
+                    return None, "No next pair found, no find_all"
             should_stop, message = self._check_should_stop(
                 next_pair=next_pair, day_no=day_no, initial_day_no=initial_day_no
             )
+            logging.debug(f"{should_stop=} {message=}")
             if next_pair:
                 return next_pair, day_names.get(day_no, "")
             if not next_pair and should_stop:
                 return None, message
+            logging.debug(f"Going to next day")
             day_no = self.__get_next_day(day_no=day_no)
+            logging.debug(f"Next day: {day_no=}")
             pair_no = 0
 
     def get_week_representation(self) -> list[Day]:
