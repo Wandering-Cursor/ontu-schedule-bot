@@ -19,18 +19,71 @@ def _print(exception: Exception) -> str:
     return text
 
 
+async def send_exception(
+    update: Update | None,
+    exception: Exception,
+    *args,
+    func: Callable | None = None,
+    bot_token: str | None = None,
+    **kwargs,
+):
+    """
+    Sends exception to DEBUG_CHAT_ID, can be used in any function.
+    """
+    text_full = "Виникла помилка:\n"
+    text_full += str(exception.args) + "\n"
+    if func:
+        text_full += str(f"Arguments of `{func.__name__}`:")
+
+    pretty_args = [
+        {"original": arg, "dict": getattr(arg, "__dict__", None)} for arg in args
+    ]
+    pretty_kwargs = [
+        {"key": key, "value": item, "dict": getattr(item, "__dict__", None)}
+        for key, item in kwargs.items()
+    ]
+    text_full += str(f"\n{pretty_args=};{pretty_kwargs=}")
+
+    texts = split_string(string=text_full)
+
+    if update:
+        bot_token = update.get_bot().token
+
+    for text in texts:
+        send_message_to_telegram(
+            bot_token=bot_token,
+            chat_id=DEBUG_CHAT_ID,
+            text=text,
+            parse_mode="",
+        )
+        await asyncio.sleep(0.2)
+
+
 def reply_with_exception(func: Callable):
     """
     If while processing a call ValueError occurs - tries to reply with text to a message
     """
 
     async def inner(*args, **kwargs):
+        pretty_args = [
+            {"original": arg, "str": str(arg), "dict": getattr(arg, "__dict__", None)}
+            for arg in args
+        ]
+        pretty_kwargs = [
+            {
+                "key": key,
+                "value": item,
+                "str": str(item),
+                "dict": getattr(item, "__dict__", None),
+            }
+            for key, item in kwargs.items()
+        ]
         logging.info(
             "Running `%s` with `reply_with_exception` decorator.\n"
             "Args: %s\nKwargs: %s",
             func.__name__,
-            args,
-            kwargs,
+            pretty_args,
+            pretty_kwargs,
         )
 
         try:
@@ -54,19 +107,13 @@ def reply_with_exception(func: Callable):
             if query and query.message:
                 message = query.message
 
-            text_full = "Виникла помилка:\n"
-            text_full += str(exception.args) + "\n"
-            text_full += str(f"Arguments of `{func.__name__}`:\n" f"{(args, kwargs)}")
-            texts = split_string(string=text_full)
-
-            for text in texts:
-                send_message_to_telegram(
-                    bot_token=update.get_bot().token,
-                    chat_id=DEBUG_CHAT_ID,
-                    text=text,
-                    parse_mode="",
-                )
-                await asyncio.sleep(0.2)
+            await send_exception(
+                update,
+                exception,
+                func,
+                *args,
+                **kwargs,
+            )
 
             short_text = "Виникла помилка.\nПовідомте про це @man_with_a_name."
 
