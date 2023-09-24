@@ -488,6 +488,8 @@ async def update_notbot(update: Update, _) -> None:
     Args:
         _ (ContextTypes.DEFAULT_TYPE): Context, that's passed when calling for task
     """
+    if not update.effective_chat:
+        return
     if update.effective_chat.id != DEBUG_CHAT_ID:
         return
 
@@ -495,7 +497,7 @@ async def update_notbot(update: Update, _) -> None:
     utils.Getter().update_notbot()
     logging.info("Finished updating notbot")
     if update.message:
-        update.message.reply_text("Notbot was reset")
+        await update.message.reply_text("Notbot was reset")
 
 
 @decorators.reply_with_exception
