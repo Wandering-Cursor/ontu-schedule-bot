@@ -22,6 +22,7 @@ class Endpoints(Enum):
     GROUPS_GET = "/api/groups_get"
 
     SCHEDULE_GET = "/api/schedule_get"
+    SCHEDULE_BATCH_GET = "/api/batch_schedule"
 
     NOTBOT_GET = "/api/update_notbot"
     CACHE_RESET = "/api/reset_cache"

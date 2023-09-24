@@ -1,12 +1,13 @@
 """Contains some handy decorators for bot"""
-import asyncio
 import logging
+import traceback
 from typing import Callable
 
 from requests.exceptions import RequestException
 from secret_config import DEBUG_CHAT_ID
-from telegram import Update
-from utils import send_message_to_telegram, split_string
+from telegram import Update, Bot
+from telegram.ext import ContextTypes
+from utils import split_string
 
 
 def _print(exception: Exception) -> str:
@@ -20,43 +21,35 @@ def _print(exception: Exception) -> str:
 
 
 async def send_exception(
-    update: Update | None,
+    bot: Bot | None,
     exception: Exception,
     *args,
     func: Callable | None = None,
-    bot_token: str | None = None,
     **kwargs,
 ):
     """
     Sends exception to DEBUG_CHAT_ID, can be used in any function.
     """
-    text_full = "Виникла помилка:\n"
-    text_full += str(exception.args) + "\n"
+    text_full = "Виникла помилка:\nArgs:"
+    text_full += str(exception.args) + "\nTraceback:\n"
+    text_full += str(traceback.format_exc())
     if func:
         text_full += str(f"Arguments of `{func.__name__}`:")
 
-    pretty_args = [
-        {"original": arg, "dict": getattr(arg, "__dict__", None)} for arg in args
-    ]
+    pretty_args = [{"original": arg, "dict": getattr(arg, "__dict__", None)} for arg in args]
     pretty_kwargs = [
-        {"key": key, "value": item, "dict": getattr(item, "__dict__", None)}
-        for key, item in kwargs.items()
+        {"key": key, "value": item, "dict": getattr(item, "__dict__", None)} for key, item in kwargs.items()
     ]
     text_full += str(f"\n{pretty_args=};{pretty_kwargs=}")
 
     texts = split_string(string=text_full)
 
-    if update:
-        bot_token = update.get_bot().token
-
     for text in texts:
-        send_message_to_telegram(
-            bot_token=bot_token,
+        await bot.send_message(
             chat_id=DEBUG_CHAT_ID,
             text=text,
             parse_mode="",
         )
-        await asyncio.sleep(0.2)
 
 
 def reply_with_exception(func: Callable):
@@ -65,10 +58,7 @@ def reply_with_exception(func: Callable):
     """
 
     async def inner(*args, **kwargs):
-        pretty_args = [
-            {"original": arg, "str": str(arg), "dict": getattr(arg, "__dict__", None)}
-            for arg in args
-        ]
+        pretty_args = [{"original": arg, "str": str(arg), "dict": getattr(arg, "__dict__", None)} for arg in args]
         pretty_kwargs = [
             {
                 "key": key,
@@ -79,8 +69,7 @@ def reply_with_exception(func: Callable):
             for key, item in kwargs.items()
         ]
         logging.info(
-            "Running `%s` with `reply_with_exception` decorator.\n"
-            "Args: %s\nKwargs: %s",
+            "Running `%s` with `reply_with_exception` decorator.\n" "Args: %s\nKwargs: %s",
             func.__name__,
             pretty_args,
             pretty_kwargs,
@@ -91,12 +80,15 @@ def reply_with_exception(func: Callable):
             return value
         except (ValueError, RequestException) as exception:
             logging.exception(msg=f"Exception in {func}\n{exception}")
+            context = kwargs.pop("context", None)
             update = kwargs.pop("update", None)
             for arg in args:
                 if isinstance(arg, Update):
                     update = arg
+                if isinstance(arg, ContextTypes):
+                    context = arg
 
-            if not update or not isinstance(update, Update):
+            if not isinstance(update, Update) and not isinstance(context, ContextTypes):
                 return _print(exception)
 
             query = update.callback_query
@@ -107,8 +99,14 @@ def reply_with_exception(func: Callable):
             if query and query.message:
                 message = query.message
 
+            bot = None
+            if update:
+                bot = update.get_bot()
+            if context:
+                bot = context.bot  # type: ignore
+
             await send_exception(
-                update,
+                bot,
                 exception,
                 func,
                 *args,

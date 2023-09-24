@@ -62,9 +62,7 @@ class Getter(BaseRequester):
 
     def get_chat(self, chat_id: int) -> classes.Chat | None:
         """Method to get information about a user"""
-        response = self.make_request(
-            endpoint=Endpoints.CHAT_INFO.value, json={"chat_id": chat_id}
-        )
+        response = self.make_request(endpoint=Endpoints.CHAT_INFO.value, json={"chat_id": chat_id})
 
         answer = response.json()
         if not answer:
@@ -83,9 +81,7 @@ class Getter(BaseRequester):
 
     def get_groups(self, faculty_name: str) -> list[classes.Group]:
         """This method returns a list of group from faculty name"""
-        response = self.make_request(
-            endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name}
-        )
+        response = self.make_request(endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name})
 
         answer: list[dict] = response.json()
         groups: list[classes.Group] = []
@@ -122,9 +118,7 @@ class Getter(BaseRequester):
             bool: Was notbot cookie updated. True - yes, False - no
         """
         try:
-            self.make_request(
-                endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128
-            )
+            self.make_request(endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128)
             return True
         except (
             ValueError,
@@ -146,6 +140,23 @@ class Getter(BaseRequester):
 
         answer: dict = response.json()
         return answer.get("count", 0) >= 0
+
+    def get_batch_schedule(self) -> list[dict[str, classes.Schedule | str | list[int]]]:
+        """This method gets schedule for all groups"""
+        response = self.make_request(endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET")
+
+        answer: list[dict] = response.json()
+        result = []
+        for group in answer:
+            result.append(
+                {
+                    "faculty": group["faculty_name"],
+                    "group": group["group_name"],
+                    "chat_ids": group["chat_ids"],
+                    "schedule": classes.Schedule.from_json(group["schedule"]),
+                }
+            )
+        return result
 
 
 class Setter(BaseRequester):
@@ -226,9 +237,7 @@ def split_string(string: str, max_len: int = 4096) -> list[str]:
     return [string[i : i + max_len] for i in range(0, string_size, max_len)]
 
 
-def send_message_to_telegram(
-    bot_token: str, chat_id: int | str, text: str, parse_mode: str = "HTML"
-) -> bool:
+def send_message_to_telegram(bot_token: str, chat_id: int | str, text: str, parse_mode: str = "HTML") -> bool:
     """Util method to send message via Telegram Bot
 
     Args:

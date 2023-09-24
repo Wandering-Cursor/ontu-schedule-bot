@@ -9,6 +9,7 @@ from secret_config import DEBUG_CHAT_ID
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.constants import ChatType
 from telegram.ext import ContextTypes
+import time
 
 
 @decorators.reply_with_exception
@@ -134,7 +135,7 @@ async def group_select(update: Update, _) -> None:
     groups = utils.Getter().get_groups(faculty_name=data[enums.FACULTY_NAME_INDEX])
     number_of_pages = utils.get_number_of_pages(groups)  # type: ignore
     current_page: list[classes.Group] = utils.get_current_page(
-        list_of_elements=groups,
+        list_of_elements=groups,  # type: ignore
         page=page,
     )  # type: ignore
     for group in current_page:
@@ -439,7 +440,7 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logging.exception(exc)
             await decorators.send_exception(
-                update=None,
+                bot=context.bot,
                 exception=exc,
                 func=send_pair_check_result,
                 bot_token=context.bot.token,
@@ -448,6 +449,60 @@ async def pair_check(context: ContextTypes.DEFAULT_TYPE) -> None:
                     "context": context,
                 },
             )
+
+
+@decorators.reply_with_exception
+async def batch_pair_check_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """This method is used to check for upcoming pairs"""
+    if not update.effective_chat:
+        return
+    if update.effective_chat.id != DEBUG_CHAT_ID:
+        return
+
+    await batch_pair_check(context=context, update=update)
+
+
+@decorators.reply_with_exception
+async def batch_pair_check(context: ContextTypes.DEFAULT_TYPE, update: Update | None = None) -> None:
+    """This method is used to check for upcoming pairs"""
+    start_time = time.time()
+    batch = utils.Getter().get_batch_schedule()
+
+    for group in batch:
+        chat_ids: list[int] = group["chat_ids"]  # type: ignore
+        for chat_id in chat_ids:
+            schedule: "utils.classes.Schedule" = group["schedule"]  # type: ignore
+            pair, string = schedule.get_next_pair(find_all=False)
+            if not pair:
+                continue
+            pair_as_text = pair.as_text(day_name=string)
+            try:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=pair_as_text,
+                    parse_mode="HTML",
+                )
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                logging.exception(exc)
+                await decorators.send_exception(
+                    bot=context.bot,
+                    exception=exc,
+                    func=context.bot.send_message,
+                    bot_token=context.bot.token,
+                    kwargs={
+                        "chat_id": chat_id,
+                        "text": pair_as_text,
+                        "parse_mode": "HTML",
+                    },
+                )
+                continue
+    end_time = time.time()
+
+    await context.bot.send_message(
+        chat_id=DEBUG_CHAT_ID,
+        text=f"Batch pair check finished in {end_time - start_time:.2f} seconds",
+        disable_notification=True,
+    )
 
 
 @decorators.reply_with_exception
