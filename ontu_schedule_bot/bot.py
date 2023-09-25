@@ -89,6 +89,9 @@ def main() -> None:
             commands.batch_pair_check,
             time=datetime.time(tzinfo=pytz.timezone("Europe/Kiev"), **time_kwargs),
             days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
+            job_kwargs={
+                "misfire_grace_time": None,
+            },
         )
 
     # application.job_queue.run_repeating(
