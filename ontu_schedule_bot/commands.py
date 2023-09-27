@@ -587,5 +587,4 @@ async def get_today(update: Update, _):
         )
         return
 
-    if today_schedule.get_details():
-        await send_day_details(day=today_schedule, message=message, send_new=True)
+    await send_day_details(day=today_schedule, message=message, send_new=True)
