@@ -36,8 +36,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Start the bot"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    asyncio.set_event_loop(asyncio.new_event_loop())
     persistence = PicklePersistence(filepath="persistance_cache")
 
     application = (
@@ -172,9 +171,7 @@ def main() -> None:
 
 def notifications() -> None:
     """Runs the job_queue for notifications"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
+    asyncio.set_event_loop(asyncio.new_event_loop())
     application = Application.builder().token(API_TOKEN).build()
 
     if not isinstance(application.job_queue, JobQueue):
@@ -198,6 +195,7 @@ def start_threads():
     """
     This method starts two threads, for ease of closing the app with keyboard interrupt
     """
+    asyncio.set_event_loop(asyncio.new_event_loop())
     main_thread = threading.Thread(
         target=main,
         name="Main",
