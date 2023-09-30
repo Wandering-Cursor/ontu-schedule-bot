@@ -117,7 +117,7 @@ async def start_for_teachers(update: Update, _: ContextTypes.DEFAULT_TYPE) -> No
     try:
         chat_entity = utils.Getter().get_chat(telegram_chat.id)
     except ValueError as error:
-        print(error)
+        logging.error(error)
     if not chat_entity:
         chat_entity = utils.Setter().new_chat(chat=telegram_chat)
         if not isinstance(chat_entity, classes.Chat):
