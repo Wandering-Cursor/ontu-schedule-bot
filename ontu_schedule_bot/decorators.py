@@ -36,9 +36,12 @@ async def send_exception(
     if func:
         text_full += str(f"Arguments of `{func.__name__}`:")
 
-    pretty_args = [{"original": arg, "dict": getattr(arg, "__dict__", None)} for arg in args]
+    pretty_args = [
+        {"original": arg, "dict": getattr(arg, "__dict__", None)} for arg in args
+    ]
     pretty_kwargs = [
-        {"key": key, "value": item, "dict": getattr(item, "__dict__", None)} for key, item in kwargs.items()
+        {"key": key, "value": item, "dict": getattr(item, "__dict__", None)}
+        for key, item in kwargs.items()
     ]
     text_full += str(f"\n{pretty_args=};{pretty_kwargs=}")
 
@@ -58,7 +61,10 @@ def reply_with_exception(func: Callable):
     """
 
     async def inner(*args, **kwargs):
-        pretty_args = [{"original": arg, "str": str(arg), "dict": getattr(arg, "__dict__", None)} for arg in args]
+        pretty_args = [
+            {"original": arg, "str": str(arg), "dict": getattr(arg, "__dict__", None)}
+            for arg in args
+        ]
         pretty_kwargs = [
             {
                 "key": key,
@@ -69,7 +75,8 @@ def reply_with_exception(func: Callable):
             for key, item in kwargs.items()
         ]
         logging.info(
-            "Running `%s` with `reply_with_exception` decorator.\n" "Args: %s\nKwargs: %s",
+            "Running `%s` with `reply_with_exception` decorator.\n"
+            "Args: %s\nKwargs: %s",
             func.__name__,
             pretty_args,
             pretty_kwargs,

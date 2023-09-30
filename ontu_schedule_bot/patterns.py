@@ -71,3 +71,35 @@ def update_cache_pattern(callback_data):
         if callback_data[0] == "update_cache":
             return True
     return False
+
+
+def start_for_teachers_pattern(callback_data):
+    """Pattern for start_for_teachers"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "start_for_teachers":
+            return True
+    return False
+
+
+def set_teacher(callback_data):
+    """Pattern for set_teacher"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "set_teacher":
+            return True
+    return False
+
+
+def pick_department(callback_data):
+    """Pattern for pick_department"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "pick_department" and callback_data[1]:
+            return True
+    return False
+
+
+def pick_teacher(callback_data):
+    """Pattern for pick_teacher"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "pick_teacher" and callback_data[1]:
+            return True
+    return False

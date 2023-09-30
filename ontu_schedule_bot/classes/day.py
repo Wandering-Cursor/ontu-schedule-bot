@@ -5,10 +5,12 @@ from operator import attrgetter
 
 from classes.base import BaseClass
 from classes.pair import Pair
+from classes.lesson import Lesson
 
 SUMMARY = "{day} - {pairs} пари ({first} - {last})"
 
 PAIR_SUMMARY = "{no}. {short_name} - {teacher}"
+TEACHERS_PAIR_SUMMARY = "{no}. {short_name}"
 
 
 class Day(BaseClass):
@@ -59,10 +61,16 @@ class Day(BaseClass):
         for pair in active_pairs:
             # Hmmm, I guess that's fine?
             lesson = pair.lessons[0]
-            pairs[pair] = PAIR_SUMMARY.format(
-                no=pair.pair_no,
-                short_name=lesson.short_name,
-                teacher=lesson.teacher.short_name,
-            )
+            if isinstance(lesson, Lesson):
+                pairs[pair] = PAIR_SUMMARY.format(
+                    no=pair.pair_no,
+                    short_name=lesson.short_name,
+                    teacher=lesson.teacher.short_name,
+                )
+            else:
+                pairs[pair] = TEACHERS_PAIR_SUMMARY.format(
+                    no=pair.pair_no,
+                    short_name=lesson.name,
+                )
 
         return pairs

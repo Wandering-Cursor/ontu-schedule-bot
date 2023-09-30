@@ -101,7 +101,10 @@ class Schedule(BaseClass):
         return day_no
 
     def _check_should_stop(
-        self, next_pair: Pair | None, day_no: int, initial_day_no: int
+        self,
+        next_pair: Pair | None,
+        day_no: int,
+        initial_day_no: int,
     ) -> tuple[bool, str]:
         if next_pair:
             return True, "Пару знайдено"
