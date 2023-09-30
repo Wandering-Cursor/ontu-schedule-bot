@@ -62,7 +62,9 @@ class Getter(BaseRequester):
 
     def get_chat(self, chat_id: int) -> classes.Chat | None:
         """Method to get information about a user"""
-        response = self.make_request(endpoint=Endpoints.CHAT_INFO.value, json={"chat_id": chat_id})
+        response = self.make_request(
+            endpoint=Endpoints.CHAT_INFO.value, json={"chat_id": chat_id}
+        )
 
         answer = response.json()
         if not answer:
@@ -81,7 +83,9 @@ class Getter(BaseRequester):
 
     def get_groups(self, faculty_name: str) -> list[classes.Group]:
         """This method returns a list of group from faculty name"""
-        response = self.make_request(endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name})
+        response = self.make_request(
+            endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name}
+        )
 
         answer: list[dict] = response.json()
         groups: list[classes.Group] = []
@@ -99,7 +103,7 @@ class Getter(BaseRequester):
             chat_list.append(classes.Chat.from_json(group))
         return chat_list
 
-    def get_schedule(self, group: classes.Group) -> classes.Schedule:
+    def get_students_schedule(self, group: classes.Group) -> classes.Schedule:
         """This method gets schedule for some specific group (schedule)"""
         response = self.make_request(
             endpoint=Endpoints.SCHEDULE_GET.value,
@@ -108,6 +112,26 @@ class Getter(BaseRequester):
 
         answer: dict = response.json()
         return classes.Schedule.from_json(answer)
+
+    def get_teachers_schedule(
+        self, teacher: classes.TeacherForSchedule
+    ) -> classes.Schedule:
+        """This method gets schedule for some specific teacher (schedule)"""
+        response = self.make_request(
+            endpoint=Endpoints.TEACHERS_SCHEDULE.value,
+            json={"teacher": teacher.external_id},
+        )
+
+        answer: dict = response.json()
+        return classes.Schedule.from_json(answer)
+
+    def get_schedule(self, subscription: classes.Subscription) -> classes.Schedule:
+        """This method returns schedule from subscription"""
+        if subscription.group:
+            return self.get_students_schedule(group=subscription.group)
+        if subscription.teacher:
+            return self.get_teachers_schedule(teacher=subscription.teacher)
+        raise ValueError("Subscription must have either group or teacher")
 
     def update_notbot(
         self,
@@ -118,7 +142,9 @@ class Getter(BaseRequester):
             bool: Was notbot cookie updated. True - yes, False - no
         """
         try:
-            self.make_request(endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128)
+            self.make_request(
+                endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128
+            )
             return True
         except (
             ValueError,
@@ -143,19 +169,56 @@ class Getter(BaseRequester):
 
     def get_batch_schedule(self) -> list[dict[str, classes.Schedule | str | list[int]]]:
         """This method gets schedule for all groups"""
-        response = self.make_request(endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET")
+        response = self.make_request(
+            endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET"
+        )
 
         answer: list[dict] = response.json()
         result = []
         for group in answer:
             result.append(
                 {
-                    "faculty": group["faculty_name"],
-                    "group": group["group_name"],
                     "chat_ids": group["chat_ids"],
                     "schedule": classes.Schedule.from_json(group["schedule"]),
                 }
             )
+        return result
+
+    def get_list_of_departments(self) -> list[classes.Department]:
+        """Returns a list of departments"""
+        response = self.make_request(
+            endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET"
+        )
+
+        answer: list[dict] = response.json()
+
+        result: list[classes.Department] = []
+        for department in answer:
+            result.append(classes.Department.from_json(department))
+
+        return result
+
+    def get_teachers_by_department(
+        self, department: classes.Department
+    ) -> list[classes.TeacherForSchedule]:
+        """Returns a list of teachers for some department"""
+        response = self.make_request(
+            endpoint=Endpoints.DEPARTMENT_GET.value,
+            method="GET",
+            params={"department": department.external_id},
+        )
+
+        answer: list[dict] = response.json()
+
+        result: list[classes.TeacherForSchedule] = []
+        for teacher in answer:
+            result.append(
+                classes.TeacherForSchedule.from_json(
+                    teacher,
+                    fetch_department=False,
+                )
+            )
+
         return result
 
 
@@ -186,6 +249,29 @@ class Setter(BaseRequester):
             json={
                 "chat_id": chat.id,
                 "group": {"name": group.name, "faculty": group.faculty.name},
+                "is_active": is_active,
+            },
+        )
+
+        answer: dict = response.json()
+        if answer.pop("status", "") == Statuses.OK.value:
+            return classes.Subscription.from_json(answer)
+        return answer
+
+    def set_chat_teacher(
+        self,
+        chat: telegram.Chat,
+        teacher: classes.TeacherForSchedule,
+        is_active: bool = True,
+    ):
+        """Updates subscription info for chat"""
+        response = self.make_request(
+            endpoint=Endpoints.CHAT_UPDATE.value,
+            json={
+                "chat_id": chat.id,
+                "teacher": {
+                    "external_id": teacher.external_id,
+                },
                 "is_active": is_active,
             },
         )
@@ -237,7 +323,9 @@ def split_string(string: str, max_len: int = 4096) -> list[str]:
     return [string[i : i + max_len] for i in range(0, string_size, max_len)]
 
 
-def send_message_to_telegram(bot_token: str, chat_id: int | str, text: str, parse_mode: str = "HTML") -> bool:
+def send_message_to_telegram(
+    bot_token: str, chat_id: int | str, text: str, parse_mode: str = "HTML"
+) -> bool:
     """Util method to send message via Telegram Bot
 
     Args:

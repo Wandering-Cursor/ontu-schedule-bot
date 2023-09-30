@@ -1,7 +1,6 @@
 """Describes Lesson"""
 import datetime
 import re
-import logging
 
 from classes.base import BaseClass
 from classes.teacher import Teacher
@@ -28,7 +27,8 @@ class Lesson(BaseClass):
         i = 1
         for link in all_links:
             lesson_info = lesson_info.replace(
-                link, f"<a href='{link}'>Посилання №{i}</a>"
+                link,
+                f"<a href='{link}'>Посилання №{i}</a>",
             )
         return lesson_info
 
@@ -56,4 +56,28 @@ class Lesson(BaseClass):
         obj.full_name = lesson_name.get("full_name", "").strip()
         obj.short_name = lesson_name.get("short_name", "").strip()
         obj.auditorium = json_dict.get("auditorium", None)
+        return obj
+
+
+class TeachersLesson(BaseClass):
+    """
+    Teachers Lesson dataclass
+    """
+
+    name: str
+    groups: list[str]
+
+    @classmethod
+    def from_json(cls, json_dict: dict):
+        required_params = [
+            "name",
+            "groups",
+        ]
+
+        parsed_params = BaseClass._get_parameters(
+            json_dict=json_dict,
+            required_params=required_params,
+        )
+
+        obj = cls.make_object(parsed_params)
         return obj

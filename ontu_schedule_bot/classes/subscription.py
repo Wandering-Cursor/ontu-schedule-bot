@@ -2,25 +2,39 @@
 
 from classes.base import BaseClass
 from classes.group import Group
+from classes.teacher import TeacherForSchedule
 
 
 class Subscription(BaseClass):
     """Class for subscription to some group's schedule"""
 
-    group: Group
+    group: Group | None = None
+    teacher: TeacherForSchedule | None = None
 
     is_active: bool
 
     @classmethod
     def from_json(cls, json_dict: dict):
-        required_params = ["group", "is_active"]
+        required_params = ["is_active"]
+        optional_params = ["group", "teacher"]
 
         parsed_params = BaseClass._get_parameters(
-            json_dict=json_dict, required_params=required_params
+            json_dict=json_dict,
+            required_params=required_params,
+            optional_params=optional_params,
         )
 
-        group = Group.from_json(parsed_params.pop("group", {}))
+        group_json = parsed_params.pop("group", None)
+        teacher_json = parsed_params.pop("teacher", None)
+
+        if not group_json and not teacher_json:
+            raise ValueError("group or teacher must be specified")
 
         obj = cls.make_object(parsed_params)
-        obj.group = group
+
+        if group_json:
+            obj.group = Group.from_json(group_json)
+        if teacher_json:
+            obj.teacher = TeacherForSchedule.from_json(teacher_json)
+
         return obj

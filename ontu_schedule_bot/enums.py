@@ -27,6 +27,11 @@ class Endpoints(Enum):
     NOTBOT_GET = "/api/update_notbot"
     CACHE_RESET = "/api/reset_cache"
 
+    # Teachers
+    DEPARTMENTS_GET = "/api/teachers/departments"
+    DEPARTMENT_GET = "api/teachers/department"
+    TEACHERS_SCHEDULE = "/api/teachers/schedule"
+
 
 FACULTY_NAME_INDEX = 1
 PAGE_INDEX = 2
