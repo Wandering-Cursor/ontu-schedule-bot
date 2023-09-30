@@ -1,9 +1,6 @@
 """Contains the 'heart' of the bot. Here it's initialized and configured"""
-import asyncio
 import datetime
 import logging
-import sys
-import threading
 
 import classes
 import commands
@@ -36,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Start the bot"""
-    asyncio.set_event_loop(asyncio.new_event_loop())
     persistence = PicklePersistence(filepath="persistance_cache")
 
     application = (
@@ -166,14 +162,6 @@ def main() -> None:
         )
     )
 
-    application.run_polling()
-
-
-def notifications() -> None:
-    """Runs the job_queue for notifications"""
-    asyncio.set_event_loop(asyncio.new_event_loop())
-    application = Application.builder().token(API_TOKEN).build()
-
     if not isinstance(application.job_queue, JobQueue):
         logger.error("Application doesn't have job_queue")
         return
@@ -187,38 +175,9 @@ def notifications() -> None:
                 "misfire_grace_time": None,
             },
         )
-    application.job_queue.run_repeating(commands.batch_pair_check, interval=10)
-    application.run_polling(poll_interval=315_569_260.0)
 
-
-def start_threads():
-    """
-    This method starts two threads, for ease of closing the app with keyboard interrupt
-    """
-    asyncio.set_event_loop(asyncio.new_event_loop())
-    main_thread = threading.Thread(
-        target=main,
-        name="Main",
-        daemon=True,
-    )
-    notifications_thread = threading.Thread(
-        target=notifications,
-        name="Notifications",
-        daemon=True,
-    )
-    main_thread.start()
-    notifications_thread.start()
-
-    while True:
-        main_thread.join()
-        notifications_thread.join()
+    application.run_polling()
 
 
 if __name__ == "__main__":
-    container_thread = threading.Thread(target=start_threads, name="Super")
-    container_thread.start()
-    while True:
-        try:
-            container_thread.join(1)
-        except KeyboardInterrupt:
-            sys.exit()
+    main()
