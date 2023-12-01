@@ -62,9 +62,7 @@ class Getter(BaseRequester):
 
     def get_chat(self, chat_id: int) -> classes.Chat | None:
         """Method to get information about a user"""
-        response = self.make_request(
-            endpoint=Endpoints.CHAT_INFO.value, json={"chat_id": chat_id}
-        )
+        response = self.make_request(endpoint=Endpoints.CHAT_INFO.value, json={"chat_id": chat_id})
 
         answer = response.json()
         if not answer:
@@ -83,9 +81,7 @@ class Getter(BaseRequester):
 
     def get_groups(self, faculty_name: str) -> list[classes.Group]:
         """This method returns a list of group from faculty name"""
-        response = self.make_request(
-            endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name}
-        )
+        response = self.make_request(endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name})
 
         answer: list[dict] = response.json()
         groups: list[classes.Group] = []
@@ -113,9 +109,7 @@ class Getter(BaseRequester):
         answer: dict = response.json()
         return classes.Schedule.from_json(answer)
 
-    def get_teachers_schedule(
-        self, teacher: classes.TeacherForSchedule
-    ) -> classes.Schedule:
+    def get_teachers_schedule(self, teacher: classes.TeacherForSchedule) -> classes.Schedule:
         """This method gets schedule for some specific teacher (schedule)"""
         response = self.make_request(
             endpoint=Endpoints.TEACHERS_SCHEDULE.value,
@@ -142,9 +136,7 @@ class Getter(BaseRequester):
             bool: Was notbot cookie updated. True - yes, False - no
         """
         try:
-            self.make_request(
-                endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128
-            )
+            self.make_request(endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128)
             return True
         except (
             ValueError,
@@ -169,9 +161,7 @@ class Getter(BaseRequester):
 
     def get_batch_schedule(self) -> list[dict[str, classes.Schedule | str | list[int]]]:
         """This method gets schedule for all groups"""
-        response = self.make_request(
-            endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET"
-        )
+        response = self.make_request(endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET")
 
         answer: list[dict] = response.json()
         result = []
@@ -186,9 +176,7 @@ class Getter(BaseRequester):
 
     def get_list_of_departments(self) -> list[classes.Department]:
         """Returns a list of departments"""
-        response = self.make_request(
-            endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET"
-        )
+        response = self.make_request(endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET")
 
         answer: list[dict] = response.json()
 
@@ -198,9 +186,7 @@ class Getter(BaseRequester):
 
         return result
 
-    def get_teachers_by_department(
-        self, department: classes.Department
-    ) -> list[classes.TeacherForSchedule]:
+    def get_teachers_by_department(self, department: classes.Department) -> list[classes.TeacherForSchedule]:
         """Returns a list of teachers for some department"""
         response = self.make_request(
             endpoint=Endpoints.DEPARTMENT_GET.value,
@@ -223,7 +209,7 @@ class Getter(BaseRequester):
 
 
 class Setter(BaseRequester):
-    """A class for updating/writing data to admin"""
+    """A class for updating/writing data to"""
 
     def new_chat(self, chat: telegram.Chat) -> classes.Chat | dict | None:
         """Creates a new chat, returns response from server"""
@@ -323,9 +309,7 @@ def split_string(string: str, max_len: int = 4096) -> list[str]:
     return [string[i : i + max_len] for i in range(0, string_size, max_len)]
 
 
-def send_message_to_telegram(
-    bot_token: str, chat_id: int | str, text: str, parse_mode: str = "HTML"
-) -> bool:
+def send_message_to_telegram(bot_token: str, chat_id: int | str, text: str, parse_mode: str = "HTML") -> bool:
     """Util method to send message via Telegram Bot
 
     Args:
