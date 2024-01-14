@@ -290,14 +290,15 @@ async def teacher_set(update: Update, _) -> None:
 async def teacher_select(update: Update, _) -> None:
     """Finalize selection of teacher schedule"""
     telegram_chat = update.effective_chat
-    if not telegram_chat:
-        return
-
+    telegram_message = update.effective_message
     query = update.callback_query
-    if not query or not query.message:
+
+    if not telegram_chat or not (telegram_message or query):
         return
 
-    await query.answer("Будь-ласка, зачекайте")
+    if query:
+        await query.answer("Будь-ласка, зачекайте")
+        telegram_message = query.message
 
     if not query.data:
         return
@@ -308,7 +309,7 @@ async def teacher_select(update: Update, _) -> None:
     teacher: classes.TeacherForSchedule = data[teacher_index]
 
     subscription = utils.Setter().set_chat_teacher(
-        message=telegram_chat,
+        message=telegram_message,
         teacher=teacher,
         is_active=True,
     )
