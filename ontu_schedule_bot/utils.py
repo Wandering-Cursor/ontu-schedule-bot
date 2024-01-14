@@ -278,7 +278,7 @@ class Setter(BaseRequester):
         response = self.make_request(
             endpoint=Endpoints.CHAT_UPDATE.value,
             json={
-                "chat_id": message.id,
+                "chat_id": message.chat.id,
                 "topic_id": topic_id,
                 "teacher": {
                     "external_id": teacher.external_id,
