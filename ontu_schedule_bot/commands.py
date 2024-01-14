@@ -20,18 +20,20 @@ async def start_command(
 ) -> None:
     """Executed when user initiates conversation, or returns to main menu"""
     telegram_chat = update.effective_chat
-    if not telegram_chat:
+    message = update.effective_message
+    if not telegram_chat or not message:
         return
 
     await telegram_chat.send_chat_action(action="typing")
 
     chat_entity = None
     try:
-        chat_entity = utils.Getter().get_chat(telegram_chat.id)
+        chat_entity = utils.Getter().get_chat(message)
     except ValueError as error:
-        print(error)
+        logging.warning(error)
+
     if not chat_entity:
-        chat_entity = utils.Setter().new_chat(chat=telegram_chat)
+        chat_entity = utils.Setter().new_chat(message)
         if not isinstance(chat_entity, classes.Chat):
             raise ValueError("Could not create chat for whatever reason!")
 
@@ -75,18 +77,23 @@ async def start_command(
             )
         elif subscription.teacher:
             subscription_text = (
-                f"Поки що Ви підписані на розклад для викладача: {subscription.teacher.short_name}"
+                "Поки що Ви підписані на розклад для "
+                f"викладача: {subscription.teacher.short_name}"
             )
     elif not subscription:
         keyboard.append(
             [
-                InlineKeyboardButton("Отримувати розклад студента", callback_data=("set_group",)),
+                InlineKeyboardButton(
+                    "Отримувати розклад студента", callback_data=("set_group",)
+                ),
             ]
         )
 
     keyboard.append(
         [
-            InlineKeyboardButton("Розклад викладачів 🌚", callback_data=("start_for_teachers",)),
+            InlineKeyboardButton(
+                "Розклад викладачів 🌚", callback_data=("start_for_teachers",)
+            ),
         ]
     )
 
@@ -108,18 +115,21 @@ async def start_command(
 async def start_for_teachers(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Executed when user initiates conversation, or returns to main menu"""
     telegram_chat = update.effective_chat
+    message = update.effective_message
     if not telegram_chat:
+        return
+    if not message:
         return
 
     await telegram_chat.send_chat_action(action="typing")
 
     chat_entity = None
     try:
-        chat_entity = utils.Getter().get_chat(telegram_chat.id)
+        chat_entity = utils.Getter().get_chat(message)
     except ValueError as error:
         logging.error(error)
     if not chat_entity:
-        chat_entity = utils.Setter().new_chat(chat=telegram_chat)
+        chat_entity = utils.Setter().new_chat(message=telegram_chat)
         if not isinstance(chat_entity, classes.Chat):
             raise ValueError("Could not create chat for whatever reason!")
 
@@ -131,7 +141,9 @@ async def start_for_teachers(update: Update, _: ContextTypes.DEFAULT_TYPE) -> No
         set_teacher_button_text = "Оновити підписку на розклад викладача"
     keyboard.append(
         [
-            InlineKeyboardButton(set_teacher_button_text, callback_data=("set_teacher",)),
+            InlineKeyboardButton(
+                set_teacher_button_text, callback_data=("set_teacher",)
+            ),
         ]
     )
     if subscription and (subscription.teacher or subscription.group):
@@ -156,7 +168,10 @@ async def start_for_teachers(update: Update, _: ContextTypes.DEFAULT_TYPE) -> No
 
     main_text = "Чим можу допомогти?\n\n"
     if subscription and subscription.teacher:
-        main_text += "Ви підписані на розклад для викладача: " f"{subscription.teacher.short_name}"
+        main_text += (
+            "Ви підписані на розклад для викладача: "
+            f"{subscription.teacher.short_name}"
+        )
     elif subscription and subscription.group:
         main_text += (
             "Ви підписані на розклад для групи: "
@@ -293,7 +308,7 @@ async def teacher_select(update: Update, _) -> None:
     teacher: classes.TeacherForSchedule = data[teacher_index]
 
     subscription = utils.Setter().set_chat_teacher(
-        chat=telegram_chat,
+        message=telegram_chat,
         teacher=teacher,
         is_active=True,
     )
@@ -415,13 +430,16 @@ async def group_select(update: Update, _) -> None:
 @decorators.reply_with_exception
 async def group_set(update: Update, _) -> None:
     """This command activates a subscription"""
-    if not update.effective_chat:
+    telegram_chat = update.effective_chat
+    telegram_message = update.effective_message
+    query = update.callback_query
+
+    if not telegram_chat or not (telegram_message or query):
         return
 
-    query = update.callback_query
-    if not query or not query.message:
-        return
-    await query.answer()
+    if query:
+        await query.answer()
+        telegram_message = query.message
 
     if not query.data:
         return
@@ -430,12 +448,14 @@ async def group_set(update: Update, _) -> None:
     group_index = 1
     group: classes.Group = data[group_index]
     subscription = utils.Setter().set_chat_group(
-        chat=update.effective_chat,
+        message=telegram_message,
         group=group,
         is_active=update.effective_chat.type != ChatType.PRIVATE,
     )
     if isinstance(subscription, dict):
-        raise ValueError("Instead of subscription - got response from server", subscription)
+        raise ValueError(
+            "Instead of subscription - got response from server", subscription
+        )
 
     if not subscription.group:
         raise ValueError("Subscription has no group!")
@@ -487,8 +507,8 @@ async def pair_check_per_chat(update: Update, _) -> None:
     if update.effective_chat:
         await update.effective_chat.send_chat_action(action="typing")
 
-    chat_id = update.effective_chat.id
-    chat = utils.get_chat_by_tg_chat(chat_id=chat_id)
+    message = update.effective_message
+    chat = utils.get_chat_from_message(message)
 
     got_pair, next_pair_text = await pair_check_for_group(
         chat,
@@ -595,7 +615,7 @@ async def update_cache(update: Update, _):
 @decorators.reply_with_exception
 async def get_schedule(update: Update, _) -> None:
     """This method sends back a weekly schedule message"""
-    message = update.message
+    message = update.effective_message
     if update.callback_query:
         await update.callback_query.answer(text="Будь-ласка, зачекайте")
         message = update.callback_query.message
@@ -606,8 +626,7 @@ async def get_schedule(update: Update, _) -> None:
     if not update.effective_chat or not message:
         return
 
-    chat_id = update.effective_chat.id
-    group = utils.get_chat_by_tg_chat(chat_id=chat_id)
+    group = utils.get_chat_from_message(message=message)
     if not group.subscription:
         await message.reply_text("Будь-ласка, спочатку підпишіться за допомогою /start")
         return
@@ -705,7 +724,9 @@ async def get_pair_details(update: Update, _):
     pair = callback_data[1]
     day = callback_data[2]
 
-    keyboard = [[InlineKeyboardButton(text="Назад ⤴️", callback_data=("day_details", day))]]
+    keyboard = [
+        [InlineKeyboardButton(text="Назад ⤴️", callback_data=("day_details", day))]
+    ]
 
     await query.message.edit_text(
         text=pair.as_text(day_name=day.name),
@@ -715,7 +736,9 @@ async def get_pair_details(update: Update, _):
 
 
 @decorators.reply_with_exception
-async def send_pair_check_result(chat: classes.Chat, context: ContextTypes.DEFAULT_TYPE):
+async def send_pair_check_result(
+    chat: classes.Chat, context: ContextTypes.DEFAULT_TYPE
+):
     """
     Extracting this because I was hoping it'll run async, but it doesn't :)
     """
@@ -731,6 +754,7 @@ async def send_pair_check_result(chat: classes.Chat, context: ContextTypes.DEFAU
     utils.send_message_to_telegram(
         bot_token=context.bot.token,
         chat_id=chat.chat_id,
+        topic_id=chat.topic_id,
         text=text,
     )
 
@@ -768,14 +792,16 @@ async def batch_pair_check_handler(update: Update, context: ContextTypes.DEFAULT
 
 
 @decorators.reply_with_exception
-async def batch_pair_check(context: ContextTypes.DEFAULT_TYPE, _: Update | None = None) -> None:
+async def batch_pair_check(
+    context: ContextTypes.DEFAULT_TYPE, _: Update | None = None
+) -> None:
     """This method is used to check for upcoming pairs"""
     start_time = time.time()
     batch = utils.Getter().get_batch_schedule()
 
     for group in batch:
-        chat_ids: list[int] = group["chat_ids"]  # type: ignore
-        for chat_id in chat_ids:
+        chat_infos: list[dict[str, int]] = group["chat_info"]  # type: ignore
+        for chat_info in chat_infos:
             schedule: "utils.classes.Schedule" = group["schedule"]  # type: ignore
             pair, string = schedule.get_next_pair(find_all=False)
             if not pair:
@@ -783,7 +809,8 @@ async def batch_pair_check(context: ContextTypes.DEFAULT_TYPE, _: Update | None 
             pair_as_text = pair.as_text(day_name=string)
             try:
                 await context.bot.send_message(
-                    chat_id=chat_id,
+                    chat_id=chat_info["chat_id"],
+                    message_thread_id=chat_info["topic_id"],
                     text=pair_as_text,
                     parse_mode="HTML",
                 )
@@ -795,7 +822,7 @@ async def batch_pair_check(context: ContextTypes.DEFAULT_TYPE, _: Update | None 
                     func=context.bot.send_message,
                     bot_token=context.bot.token,
                     kwargs={
-                        "chat_id": chat_id,
+                        "chat_info": chat_info,
                         "text": pair_as_text,
                         "parse_mode": "HTML",
                     },
@@ -831,13 +858,13 @@ async def toggle_subscription(update: Update, _):
 
     if chat.subscription.group:
         utils.Setter().set_chat_group(
-            chat=update.effective_chat,
+            message=update.effective_message,
             group=chat.subscription.group,
             is_active=new_status,
         )
     if chat.subscription.teacher:
         utils.Setter().set_chat_teacher(
-            chat=update.effective_chat,
+            message=update.effective_message,
             teacher=chat.subscription.teacher,
             is_active=new_status,
         )
@@ -879,15 +906,14 @@ async def get_today(update: Update, _):
         update (Update): Telegram Update (with message...)
         _ (_type_): Redundant telegram bot argument
     """
-    message = update.message
+    message = update.effective_message
     if update.effective_chat:
         await update.effective_chat.send_chat_action(action="typing")
 
     if not update.effective_chat or not message:
         raise ValueError("Update doesn't contain chat info")
 
-    chat_id = update.effective_chat.id or message.chat_id
-    group = utils.get_chat_by_tg_chat(chat_id=chat_id)
+    group = utils.get_chat_from_message(message=message)
     if not group.subscription:
         await message.reply_text("Будь-ласка, спочатку підпишіться за допомогою /start")
         return

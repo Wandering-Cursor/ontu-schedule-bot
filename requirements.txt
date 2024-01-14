@@ -1,6 +1,6 @@
-python-telegram-bot==20.5
-python-telegram-bot[job-queue]==20.5
-python-telegram-bot[callback-data]==20.5
+python-telegram-bot==20.7
+python-telegram-bot[job-queue]==20.7
+python-telegram-bot[callback-data]==20.7
 APScheduler>=3.10.4
 
 requests

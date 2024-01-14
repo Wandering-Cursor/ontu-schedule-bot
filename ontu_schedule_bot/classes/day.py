@@ -4,8 +4,8 @@ from collections import OrderedDict
 from operator import attrgetter
 
 from classes.base import BaseClass
-from classes.pair import Pair
 from classes.lesson import Lesson
+from classes.pair import Pair
 
 SUMMARY = "{day} - {pairs} пари ({first} - {last})"
 

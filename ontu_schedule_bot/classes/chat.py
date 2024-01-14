@@ -9,6 +9,8 @@ class Chat(BaseClass):
 
     chat_id: int
     chat_name: str
+    is_forum: bool
+    topic_id: int | None = None
 
     subscription: Subscription | None = None
 

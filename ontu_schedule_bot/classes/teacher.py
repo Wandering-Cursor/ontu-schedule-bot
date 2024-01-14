@@ -1,7 +1,6 @@
 """Describes teacher"""
 
 from classes.base import BaseClass
-
 from classes.department import Department
 
 

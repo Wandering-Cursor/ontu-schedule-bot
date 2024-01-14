@@ -60,9 +60,16 @@ class BaseRequester:
 class Getter(BaseRequester):
     """Class that handles getting and sending messages to admin server"""
 
-    def get_chat(self, chat_id: int) -> classes.Chat | None:
+    def get_chat(self, message_instance: telegram.Message) -> classes.Chat | None:
         """Method to get information about a user"""
-        response = self.make_request(endpoint=Endpoints.CHAT_INFO.value, json={"chat_id": chat_id})
+        params = {"chat_id": message_instance.chat_id}
+        if message_instance.is_topic_message:
+            params["topic_id"] = message_instance.message_thread_id
+
+        response = self.make_request(
+            endpoint=Endpoints.CHAT_INFO.value,
+            json=params,
+        )
 
         answer = response.json()
         if not answer:
@@ -81,7 +88,9 @@ class Getter(BaseRequester):
 
     def get_groups(self, faculty_name: str) -> list[classes.Group]:
         """This method returns a list of group from faculty name"""
-        response = self.make_request(endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name})
+        response = self.make_request(
+            endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name}
+        )
 
         answer: list[dict] = response.json()
         groups: list[classes.Group] = []
@@ -109,7 +118,9 @@ class Getter(BaseRequester):
         answer: dict = response.json()
         return classes.Schedule.from_json(answer)
 
-    def get_teachers_schedule(self, teacher: classes.TeacherForSchedule) -> classes.Schedule:
+    def get_teachers_schedule(
+        self, teacher: classes.TeacherForSchedule
+    ) -> classes.Schedule:
         """This method gets schedule for some specific teacher (schedule)"""
         response = self.make_request(
             endpoint=Endpoints.TEACHERS_SCHEDULE.value,
@@ -136,7 +147,9 @@ class Getter(BaseRequester):
             bool: Was notbot cookie updated. True - yes, False - no
         """
         try:
-            self.make_request(endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128)
+            self.make_request(
+                endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128
+            )
             return True
         except (
             ValueError,
@@ -161,14 +174,16 @@ class Getter(BaseRequester):
 
     def get_batch_schedule(self) -> list[dict[str, classes.Schedule | str | list[int]]]:
         """This method gets schedule for all groups"""
-        response = self.make_request(endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET")
+        response = self.make_request(
+            endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET"
+        )
 
         answer: list[dict] = response.json()
         result = []
         for group in answer:
             result.append(
                 {
-                    "chat_ids": group["chat_ids"],
+                    "chat_info": group["chat_info"],
                     "schedule": classes.Schedule.from_json(group["schedule"]),
                 }
             )
@@ -176,7 +191,9 @@ class Getter(BaseRequester):
 
     def get_list_of_departments(self) -> list[classes.Department]:
         """Returns a list of departments"""
-        response = self.make_request(endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET")
+        response = self.make_request(
+            endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET"
+        )
 
         answer: list[dict] = response.json()
 
@@ -186,7 +203,9 @@ class Getter(BaseRequester):
 
         return result
 
-    def get_teachers_by_department(self, department: classes.Department) -> list[classes.TeacherForSchedule]:
+    def get_teachers_by_department(
+        self, department: classes.Department
+    ) -> list[classes.TeacherForSchedule]:
         """Returns a list of teachers for some department"""
         response = self.make_request(
             endpoint=Endpoints.DEPARTMENT_GET.value,
@@ -211,29 +230,33 @@ class Getter(BaseRequester):
 class Setter(BaseRequester):
     """A class for updating/writing data to"""
 
-    def new_chat(self, chat: telegram.Chat) -> classes.Chat | dict | None:
+    def new_chat(self, message: telegram.Message) -> classes.Chat | dict | None:
         """Creates a new chat, returns response from server"""
         response = self.make_request(
             endpoint=Endpoints.CHAT_CREATE.value,
             json={
-                "chat_id": chat.id,
-                "chat_name": chat.effective_name,
-                "chat_info": chat.to_json(),
+                "chat_id": message.chat.id,
+                "chat_name": message.chat.effective_name,
+                "chat_info": message.to_json(),
+                "is_forum": message.chat.is_forum,
+                "thread_id": message.message_thread_id,
             },
         )
         answer: dict = response.json()
         if answer.pop("status", "") == Statuses.OK.value:
-            return Getter().get_chat(chat.id)
+            return Getter().get_chat(message)
         return answer
 
     def set_chat_group(
-        self, chat: telegram.Chat, group: classes.Group, is_active: bool = True
+        self, message: telegram.Message, group: classes.Group, is_active: bool = True
     ) -> classes.Subscription | dict:
         """Updates subscription info for chat"""
+        topic_id = message.message_thread_id if message.is_topic_message else None
         response = self.make_request(
             endpoint=Endpoints.CHAT_UPDATE.value,
             json={
-                "chat_id": chat.id,
+                "chat_id": message.chat.id,
+                "topic_id": topic_id,
                 "group": {"name": group.name, "faculty": group.faculty.name},
                 "is_active": is_active,
             },
@@ -246,15 +269,17 @@ class Setter(BaseRequester):
 
     def set_chat_teacher(
         self,
-        chat: telegram.Chat,
+        message: telegram.Message,
         teacher: classes.TeacherForSchedule,
         is_active: bool = True,
     ):
         """Updates subscription info for chat"""
+        topic_id = message.message_thread_id if message.is_topic_message else None
         response = self.make_request(
             endpoint=Endpoints.CHAT_UPDATE.value,
             json={
-                "chat_id": chat.id,
+                "chat_id": message.id,
+                "topic_id": topic_id,
                 "teacher": {
                     "external_id": teacher.external_id,
                 },
@@ -294,9 +319,9 @@ def get_current_page(list_of_elements: list[object], page: int = 0):
 # region Common
 
 
-def get_chat_by_tg_chat(chat_id: int):
-    """A method to get a chat by chat_id"""
-    chat = Getter().get_chat(chat_id=chat_id)
+def get_chat_from_message(message: telegram.Message):
+    """A method to get a chat by message"""
+    chat = Getter().get_chat(message)
     if not chat:
         raise ValueError("Будь-ласка - почніть з початку: /start")
     return chat
@@ -309,7 +334,13 @@ def split_string(string: str, max_len: int = 4096) -> list[str]:
     return [string[i : i + max_len] for i in range(0, string_size, max_len)]
 
 
-def send_message_to_telegram(bot_token: str, chat_id: int | str, text: str, parse_mode: str = "HTML") -> bool:
+def send_message_to_telegram(
+    bot_token: str,
+    chat_id: int | str,
+    topic_id: int | None,
+    text: str,
+    parse_mode: str = "HTML",
+) -> bool:
     """Util method to send message via Telegram Bot
 
     Args:
@@ -321,14 +352,17 @@ def send_message_to_telegram(bot_token: str, chat_id: int | str, text: str, pars
         bool: Wether message was sent, or not. True if sent, False if error occurred
     """
     api_endpoint = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    data = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": parse_mode,
+    }
+    if topic_id:
+        data["message_thread_id"] = topic_id
     try:
         response = requests.get(
             url=api_endpoint,
-            data={
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": parse_mode,
-            },
+            data=data,
             timeout=5,
         )
 

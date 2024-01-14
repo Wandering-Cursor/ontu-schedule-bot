@@ -5,7 +5,7 @@ from typing import Callable
 
 from requests.exceptions import RequestException
 from secret_config import DEBUG_CHAT_ID
-from telegram import Update, Bot
+from telegram import Bot, Update
 from telegram.ext import ContextTypes
 from utils import split_string
 
