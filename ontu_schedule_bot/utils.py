@@ -62,7 +62,7 @@ class Getter(BaseRequester):
 
     def get_chat(self, message_instance: telegram.Message) -> classes.Chat | None:
         """Method to get information about a user"""
-        params = {"chat_id": message_instance.chat_id}
+        params = {"chat_id": message_instance.chat_id, "topic_id": None}
         if message_instance.is_topic_message:
             params["topic_id"] = message_instance.message_thread_id
 
