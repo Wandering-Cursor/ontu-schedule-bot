@@ -8,7 +8,7 @@ import enums
 import utils
 from secret_config import DEBUG_CHAT_ID
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
-from telegram.constants import ChatType
+from telegram.constants import ChatType, ParseMode
 from telegram.ext import ContextTypes
 
 
@@ -931,3 +931,48 @@ async def get_today(update: Update, _):
         return
 
     await send_day_details(day=today_schedule, message=message, send_new=True)
+
+
+@decorators.reply_with_exception
+async def send_message_campaign(
+    update: Update,
+    _: ContextTypes.DEFAULT_TYPE,
+):
+    """Allows to send batch messages to users"""
+    message = update.effective_message
+    if not message or not message.text:
+        return
+
+    if message.chat.id != DEBUG_CHAT_ID:
+        return
+
+    text = message.text.replace("/send_campaign ", "")
+    campaign = utils.Getter().get_message_campaign(text)
+
+    if not campaign:
+        await message.reply_text("Не вдалося знайти повідомлення - перевірте логи.")
+        return
+
+    chats_list = set(campaign.to_chats)
+
+    await message.reply_text("Починаю надсилати повідомлення")
+    await message.reply_text(
+        text=campaign.message,
+        parse_mode=ParseMode.HTML,
+    )
+
+    start = time.time()
+
+    for chat_id in chats_list:
+        utils.send_message_to_telegram(
+            bot_token=message.get_bot().token,
+            chat_id=chat_id,
+            topic_id=None,
+            text=campaign.message,
+        )
+
+    end = time.time()
+
+    await message.reply_text(
+        f"Повідомлення надіслано всім отримувачам за {round(end-start, 2)} секунд"
+    )

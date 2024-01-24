@@ -226,6 +226,22 @@ class Getter(BaseRequester):
 
         return result
 
+    def get_message_campaign(self, campaign_id: str) -> classes.MessageCampaign | None:
+        """Returns a Message Campaign from server, if it exists"""
+        try:
+            response = self.make_request(
+                endpoint=Endpoints.MESSAGE_CAMPAIGN_GET.value,
+                method="GET",
+                params={"campaign_id": campaign_id},
+            )
+        except ValueError as e:
+            logging.warning("Could not find a campaign\n%s", e)
+            return None
+
+        answer: dict = response.json()
+
+        return classes.MessageCampaign.from_json(answer)
+
 
 class Setter(BaseRequester):
     """A class for updating/writing data to"""

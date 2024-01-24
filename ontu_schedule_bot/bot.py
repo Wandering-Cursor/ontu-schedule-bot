@@ -157,6 +157,13 @@ def main() -> None:
 
     application.add_handler(
         CommandHandler(
+            command="send_campaign",
+            callback=commands.send_message_campaign,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
             command="batch_pair_check",
             callback=commands.batch_pair_check_handler,
         )
