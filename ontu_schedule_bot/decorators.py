@@ -4,10 +4,10 @@ import traceback
 from typing import Callable
 
 from requests.exceptions import RequestException
-from secret_config import DEBUG_CHAT_ID
+from secret_config import DEBUG_CHAT_ID, API_TOKEN
 from telegram import Bot, Update
 from telegram.ext import ContextTypes
-from utils import split_string
+from utils import split_string, send_message_to_telegram
 
 
 def _print(exception: Exception) -> str:
@@ -96,6 +96,14 @@ def reply_with_exception(func: Callable):
                     context = arg
 
             if not isinstance(update, Update) and not isinstance(context, ContextTypes):
+                texts = split_string(f"Exception in {func=}\n{traceback.format_exc()}")
+                for text in texts:
+                    send_message_to_telegram(
+                        bot_token=API_TOKEN,
+                        chat_id=DEBUG_CHAT_ID,
+                        text=text,
+                        parse_mode=None,
+                    )
                 return _print(exception)
 
             query = update.callback_query

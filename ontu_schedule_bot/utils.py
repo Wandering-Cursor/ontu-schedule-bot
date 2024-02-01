@@ -355,7 +355,7 @@ def send_message_to_telegram(
     chat_id: int | str,
     topic_id: int | None,
     text: str,
-    parse_mode: str = "HTML",
+    parse_mode: str | None = "HTML",
 ) -> bool:
     """Util method to send message via Telegram Bot
 
@@ -371,8 +371,9 @@ def send_message_to_telegram(
     data = {
         "chat_id": chat_id,
         "text": text,
-        "parse_mode": parse_mode,
     }
+    if parse_mode:
+        data["parse_mode"] = parse_mode
     if topic_id:
         data["message_thread_id"] = topic_id
     try:
