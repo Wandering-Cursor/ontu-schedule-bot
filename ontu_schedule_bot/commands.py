@@ -9,6 +9,7 @@ import utils
 from secret_config import DEBUG_CHAT_ID
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.constants import ChatType, ParseMode
+from telegram.error import Forbidden
 from telegram.ext import ContextTypes
 
 
@@ -815,6 +816,13 @@ async def batch_pair_check(
                     text=pair_as_text,
                     parse_mode="HTML",
                 )
+            except Forbidden as exc:
+                logging.exception(exc)
+                await context.bot.send_message(
+                    chat_id=DEBUG_CHAT_ID,
+                    text=f"Користувач заблокував бота: {chat_info=}\nВ методі batch_pair_check",
+                )
+                continue
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 logging.exception(exc)
                 await decorators.send_exception(
@@ -829,6 +837,7 @@ async def batch_pair_check(
                     },
                 )
                 continue
+
     end_time = time.time()
 
     await context.bot.send_message(

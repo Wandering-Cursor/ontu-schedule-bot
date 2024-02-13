@@ -4,10 +4,10 @@ import traceback
 from typing import Callable
 
 from requests.exceptions import RequestException
-from secret_config import DEBUG_CHAT_ID, API_TOKEN
+from secret_config import API_TOKEN, DEBUG_CHAT_ID
 from telegram import Bot, Update
 from telegram.ext import ContextTypes
-from utils import split_string, send_message_to_telegram
+from utils import send_message_to_telegram, split_string
 
 
 def _print(exception: Exception) -> str:
@@ -101,6 +101,7 @@ def reply_with_exception(func: Callable):
                     send_message_to_telegram(
                         bot_token=API_TOKEN,
                         chat_id=DEBUG_CHAT_ID,
+                        topic_id=None,
                         text=text,
                         parse_mode=None,
                     )
