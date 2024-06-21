@@ -1,6 +1,6 @@
 """Describes department"""
 
-from classes.base import BaseClass
+from ontu_schedule_bot.classes.base import BaseClass
 
 
 class Department(BaseClass):

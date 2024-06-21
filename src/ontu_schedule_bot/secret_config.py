@@ -1,4 +1,5 @@
 """This module loads (or sets) secrets for the bot (API_TOKEN, API_URL...)"""
+
 from decouple import config
 
 API_TOKEN = config("API_TOKEN", default=None)
@@ -17,10 +18,10 @@ if not API_URL:
         file.write(f"API_URL={API_URL}\n")
     print("Saved API_URL to .env")
 
-DEBUG_CHAT_ID = config("DEBUG_CHAT_ID", default=None)
+DEBUG_CHAT_ID = config("DEBUG_CHAT_ID", default=None, cast=int)
 if not DEBUG_CHAT_ID:
     print("DEBUG_CHAT_ID not found in .env")
-    DEBUG_CHAT_ID = input("Enter DEBUG_CHAT_ID to receive error messages: ")
+    DEBUG_CHAT_ID = int(input("Enter DEBUG_CHAT_ID to receive error messages: "))
     with open(".env", "a+", encoding="UTF-8") as file:
         file.write(f"DEBUG_CHAT_ID={DEBUG_CHAT_ID}\n")
     print("Saved DEBUG_CHAT_ID to .env")

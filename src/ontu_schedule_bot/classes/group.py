@@ -1,7 +1,7 @@
 """This module defines group class"""
 
-from classes.base import BaseClass
-from classes.faculty import Faculty
+from ontu_schedule_bot.classes.base import BaseClass
+from ontu_schedule_bot.classes.faculty import Faculty
 
 
 class Group(BaseClass):

@@ -1,13 +1,15 @@
 """Contains some handy decorators for bot"""
+
 import logging
 import traceback
 from typing import Callable
 
 from requests.exceptions import RequestException
-from secret_config import API_TOKEN, DEBUG_CHAT_ID
 from telegram import Bot, Update
 from telegram.ext import ContextTypes
-from utils import send_message_to_telegram, split_string
+
+from ontu_schedule_bot.secret_config import API_TOKEN, DEBUG_CHAT_ID
+from ontu_schedule_bot.utils import send_message_to_telegram, split_string
 
 
 def _print(exception: Exception) -> str:

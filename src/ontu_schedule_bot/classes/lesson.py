@@ -1,9 +1,10 @@
 """Describes Lesson"""
+
 import datetime
 import re
 
-from classes.base import BaseClass
-from classes.teacher import Teacher
+from ontu_schedule_bot.classes.base import BaseClass
+from ontu_schedule_bot.classes.teacher import Teacher
 
 
 class Lesson(BaseClass):

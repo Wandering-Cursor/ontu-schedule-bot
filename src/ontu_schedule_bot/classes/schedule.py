@@ -1,10 +1,12 @@
 """Describes schedule"""
+
 import datetime
 
 import pytz
-from classes.base import BaseClass, pair_times
-from classes.day import Day
-from classes.pair import Pair
+
+from ontu_schedule_bot.classes.base import BaseClass, pair_times
+from ontu_schedule_bot.classes.day import Day
+from ontu_schedule_bot.classes.pair import Pair
 
 MAX_PAIRS = 6
 

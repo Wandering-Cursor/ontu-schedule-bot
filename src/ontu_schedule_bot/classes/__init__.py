@@ -1,4 +1,5 @@
 """Imports for classes"""
+
 from .base import BaseClass
 from .chat import Chat
 from .day import Day
@@ -25,4 +26,5 @@ __all__ = [
     "Day",
     "TeacherForSchedule",
     "Department",
+    "MessageCampaign",
 ]
