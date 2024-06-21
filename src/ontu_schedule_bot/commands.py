@@ -1,16 +1,15 @@
 """This module contains all the commands bot may execute"""
+
 import logging
 import time
 
-import classes
-import decorators
-import enums
-import utils
-from secret_config import DEBUG_CHAT_ID
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.constants import ChatType, ParseMode
 from telegram.error import Forbidden
 from telegram.ext import ContextTypes
+
+from ontu_schedule_bot import classes, decorators, enums, utils
+from ontu_schedule_bot.secret_config import DEBUG_CHAT_ID
 
 
 @decorators.reply_with_exception

@@ -1,8 +1,8 @@
 """This module describes subscription class"""
 
-from classes.base import BaseClass
-from classes.group import Group
-from classes.teacher import TeacherForSchedule
+from ontu_schedule_bot.classes.base import BaseClass
+from ontu_schedule_bot.classes.group import Group
+from ontu_schedule_bot.classes.teacher import TeacherForSchedule
 
 
 class Subscription(BaseClass):

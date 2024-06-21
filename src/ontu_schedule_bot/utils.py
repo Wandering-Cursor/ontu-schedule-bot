@@ -1,13 +1,15 @@
 """This is a utils module, it contains Requests and pagination for bot"""
+
 import logging
 import math
 from urllib.parse import urljoin
 
-import classes
 import requests
 import telegram
-from enums import Endpoints, Statuses
-from secret_config import API_URL
+
+from ontu_schedule_bot import classes
+from ontu_schedule_bot.enums import Endpoints, Statuses
+from ontu_schedule_bot.secret_config import API_URL
 
 
 # region Requests
@@ -172,7 +174,9 @@ class Getter(BaseRequester):
         answer: dict = response.json()
         return answer.get("count", 0) >= 0
 
-    def get_batch_schedule(self) -> list[dict[str, classes.Schedule | str | list[int]]]:
+    def get_batch_schedule(
+        self,
+    ) -> list[dict[str, classes.Schedule | str | list[int]]]:
         """This method gets schedule for all groups"""
         response = self.make_request(
             endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET"
@@ -264,7 +268,10 @@ class Setter(BaseRequester):
         return answer
 
     def set_chat_group(
-        self, message: telegram.Message, group: classes.Group, is_active: bool = True
+        self,
+        message: telegram.Message,
+        group: classes.Group,
+        is_active: bool = True,
     ) -> classes.Subscription | dict:
         """Updates subscription info for chat"""
         topic_id = message.message_thread_id if message.is_topic_message else None

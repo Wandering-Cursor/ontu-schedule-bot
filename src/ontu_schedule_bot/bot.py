@@ -1,12 +1,10 @@
 """Contains the 'heart' of the bot. Here it's initialized and configured"""
+
 import datetime
 import logging
+import os
 
-import classes
-import commands
-import patterns
 import pytz
-from secret_config import API_TOKEN
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -14,6 +12,11 @@ from telegram.ext import (
     JobQueue,
     PicklePersistence,
 )
+
+from ontu_schedule_bot import classes, commands, patterns
+from ontu_schedule_bot.secret_config import API_TOKEN
+
+os.makedirs("logs", exist_ok=True)
 
 # Enable logging
 logging.basicConfig(

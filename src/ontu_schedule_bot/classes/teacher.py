@@ -1,7 +1,7 @@
 """Describes teacher"""
 
-from classes.base import BaseClass
-from classes.department import Department
+from ontu_schedule_bot.classes.base import BaseClass
+from ontu_schedule_bot.classes.department import Department
 
 
 class Teacher(BaseClass):

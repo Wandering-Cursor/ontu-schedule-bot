@@ -1,4 +1,5 @@
 """This module contains some handy enumerators for bot"""
+
 from enum import Enum
 
 
