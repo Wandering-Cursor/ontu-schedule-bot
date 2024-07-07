@@ -34,8 +34,12 @@ class BaseRequester:
             )
         return response
 
-    def make_request(self, endpoint: str, **kwargs):
-        """Method for making and getting requests"""
+    def make_request(self, endpoint: str, timeout: float = 15.0, **kwargs):
+        """
+        Method for making and getting requests;
+
+        Timeout is specified in seconds. Default is 15.0 seconds;
+        """
         method: str = kwargs.pop("method", "") or self._method
         if not isinstance(
             method,
@@ -53,6 +57,7 @@ class BaseRequester:
             method=method,
             data=kwargs.pop("data", None),
             json=kwargs.pop("json", None),
+            timeout=timeout,
             **kwargs,
         )
 
@@ -80,7 +85,9 @@ class Getter(BaseRequester):
 
     def get_faculties(self) -> list[classes.Faculty]:
         """Method to get a list of faculties"""
-        response = self.make_request(endpoint=Endpoints.FACULTIES_GET.value)
+        response = self.make_request(
+            endpoint=Endpoints.FACULTIES_GET.value,
+        )
 
         answer: list[dict] = response.json()
         faculties: list[classes.Faculty] = []
@@ -102,7 +109,9 @@ class Getter(BaseRequester):
 
     def get_all_chats(self) -> list[classes.Chat]:
         """This method returns all Telegram Chats with data about them"""
-        response = self.make_request(endpoint=Endpoints.CHATS_ALL.value)
+        response = self.make_request(
+            endpoint=Endpoints.CHATS_ALL.value,
+        )
 
         answer: list[dict] = response.json()
         chat_list: list[classes.Chat] = []
@@ -150,7 +159,9 @@ class Getter(BaseRequester):
         """
         try:
             self.make_request(
-                endpoint=Endpoints.NOTBOT_GET.value, method="GET", timeout=128
+                endpoint=Endpoints.NOTBOT_GET.value,
+                method="GET",
+                timeout=150,  # Timeout in 2.5 minutes;
             )
             return True
         except (
@@ -179,7 +190,9 @@ class Getter(BaseRequester):
     ) -> list[dict[str, classes.Schedule | str | list[int]]]:
         """This method gets schedule for all groups"""
         response = self.make_request(
-            endpoint=Endpoints.SCHEDULE_BATCH_GET.value, method="GET"
+            endpoint=Endpoints.SCHEDULE_BATCH_GET.value,
+            method="GET",
+            timeout=300.0,  # Timeout in 5 minutes; Should be enough for real life cases.
         )
 
         answer: list[dict] = response.json()
