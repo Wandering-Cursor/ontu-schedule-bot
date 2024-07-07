@@ -1,6 +1,6 @@
 [project]
 name = "ontu-schedule-bot"
-version = "1.0.0"
+version = "1.0.1"
 description = "Default template for PDM package"
 authors = [
     {name = "Pavlo Pohorieltsev", email = "49622129+makisukurisu@users.noreply.github.com"},
@@ -19,7 +19,7 @@ license = {text = "MIT"}
 
 [project.optional-dependencies]
 dev = [
-    "pylint>=3.2.3",
+    "pylint>=3.2.5",
     "isort>=5.13.2",
     "black>=24.4.2",
 ]
