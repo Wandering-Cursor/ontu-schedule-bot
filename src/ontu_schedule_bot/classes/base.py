@@ -48,6 +48,8 @@ pair_times = [
     {"hour": 13, "minute": 0},
     {"hour": 14, "minute": 30},
     {"hour": 16, "minute": 0},
+    {"hour": 17, "minute": 30},
+    {"hour": 19, "minute": 10},
 ]
 
 pair_end_times = [
@@ -57,6 +59,8 @@ pair_end_times = [
     {"hour": 14, "minute": 20},
     {"hour": 15, "minute": 50},
     {"hour": 17, "minute": 20},
+    {"hour": 18, "minute": 50},
+    {"hour": 20, "minute": 30},
 ]
 
 notification_times = [
@@ -66,4 +70,6 @@ notification_times = [
     {"hour": 12, "minute": 50},
     {"hour": 14, "minute": 20},
     {"hour": 15, "minute": 50},
+    {"hour": 17, "minute": 20},
+    {"hour": 19, "minute": 0},
 ]
