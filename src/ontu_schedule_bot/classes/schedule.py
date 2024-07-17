@@ -8,7 +8,7 @@ from ontu_schedule_bot.classes.base import BaseClass, pair_times
 from ontu_schedule_bot.classes.day import Day
 from ontu_schedule_bot.classes.pair import Pair
 
-MAX_PAIRS = 6
+MAX_PAIRS = 8
 
 day_names = {
     0: "Понеділок",
