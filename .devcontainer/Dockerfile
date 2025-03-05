@@ -1,0 +1,9 @@
+# Dockerfile for devcontainer
+FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
+
+# Install package manager
+RUN curl -sSL https://pdm-project.org/install-pdm.py | python3 -
+
+# For some reason defaults to root user
+RUN chown -R vscode /workspaces/
+RUN chgrp -R vscode /workspaces/
