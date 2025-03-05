@@ -5,5 +5,4 @@ FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
 RUN curl -sSL https://pdm-project.org/install-pdm.py | python3 -
 
 # For some reason defaults to root user
-RUN chown -R vscode /workspaces/
-RUN chgrp -R vscode /workspaces/
+COPY --chown=vscode:vscode . /workspaces/ontu-schedule-bot
