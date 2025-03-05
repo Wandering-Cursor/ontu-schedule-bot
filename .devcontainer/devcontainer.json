@@ -17,7 +17,8 @@
 				"ms-python.pylint"
 			]
 		}
-	}
+	},
+	"postCreateCommand": "curl -sSL https://pdm-project.org/install-pdm.py | python3 - && pdm install"
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.

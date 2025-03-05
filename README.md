@@ -19,4 +19,6 @@ When you first start a bot it'll check environment (either a `.env` file or your
 - API_URL - URL to an instance of [ONTU Schedule Bot Admin](https://github.com/Wandering-Cursor/ontu-schedule-bot-admin);
 - DEBUG_CHAT_ID - A chat ID for debugging purposes (can be personal chat with a bot, or a group ID).
 
+See [example.env](/example.env) if you want to use a `.env` file.
+
 After that the bot will start polling updates.
