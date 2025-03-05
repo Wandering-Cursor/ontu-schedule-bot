@@ -2,8 +2,8 @@
 
 ## Supported Versions
 
-Only the latset version is supported, because right now there's no V1/V2 division.
-Older version may be used at your own risk, since they may be vulderable, or have outdated dependencies.
+Only the latest version is supported, because right now there's no V1/V2 division.
+Older version may be used at your own risk, since they may be vulnerable, or have outdated dependencies.
 
 ## Reporting a Vulnerability
 
