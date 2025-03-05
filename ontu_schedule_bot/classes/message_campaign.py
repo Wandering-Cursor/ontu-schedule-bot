@@ -1,6 +1,6 @@
 """Describes a MessageCampaign - mass-sending object for Administrators"""
 
-from ontu_schedule_bot.classes.base import BaseClass
+from .base import BaseClass
 
 
 class MessageCampaign(BaseClass):

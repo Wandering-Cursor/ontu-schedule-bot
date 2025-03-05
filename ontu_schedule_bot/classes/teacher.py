@@ -1,7 +1,7 @@
 """Describes teacher"""
 
-from ontu_schedule_bot.classes.base import BaseClass
-from ontu_schedule_bot.classes.department import Department
+from .base import BaseClass
+from .department import Department
 
 
 class Teacher(BaseClass):
@@ -44,7 +44,8 @@ class TeacherForSchedule(BaseClass):
         obj = cls.make_object(parsed_params)
 
         if fetch_department:
-            department = Department.from_json(parsed_params.pop("department", {}))
+            department = Department.from_json(
+                parsed_params.pop("department", {}))
             obj.department = department
 
         return obj

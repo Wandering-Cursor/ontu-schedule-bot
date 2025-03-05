@@ -3,8 +3,8 @@
 import datetime
 import re
 
-from ontu_schedule_bot.classes.base import BaseClass
-from ontu_schedule_bot.classes.teacher import Teacher
+from .base import BaseClass
+from .teacher import Teacher
 
 
 class Lesson(BaseClass):
@@ -24,7 +24,8 @@ class Lesson(BaseClass):
     def formatted_lesson_info(self) -> str:
         """Returns a nice looking lesson info"""
         lesson_info = self.lesson_info.strip()
-        all_links: set[str] = set(re.findall(r"(https?://[^\s]+)", lesson_info))
+        all_links: set[str] = set(re.findall(
+            r"(https?://[^\s]+)", lesson_info))
         i = 1
         for link in all_links:
             lesson_info = lesson_info.replace(

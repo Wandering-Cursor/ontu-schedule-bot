@@ -8,8 +8,8 @@ from requests.exceptions import RequestException
 from telegram import Bot, Update
 from telegram.ext import ContextTypes
 
-from ontu_schedule_bot.secret_config import API_TOKEN, DEBUG_CHAT_ID
-from ontu_schedule_bot.utils import send_message_to_telegram, split_string
+from secret_config import API_TOKEN, DEBUG_CHAT_ID
+from utils import send_message_to_telegram, split_string
 
 
 def _print(exception: Exception) -> str:
@@ -64,7 +64,8 @@ def reply_with_exception(func: Callable):
 
     async def inner(*args, **kwargs):
         pretty_args = [
-            {"original": arg, "str": str(arg), "dict": getattr(arg, "__dict__", None)}
+            {"original": arg, "str": str(
+                arg), "dict": getattr(arg, "__dict__", None)}
             for arg in args
         ]
         pretty_kwargs = [
@@ -98,7 +99,8 @@ def reply_with_exception(func: Callable):
                     context = arg
 
             if not isinstance(update, Update) and not isinstance(context, ContextTypes):
-                texts = split_string(f"Exception in {func=}\n{traceback.format_exc()}")
+                texts = split_string(
+                    f"Exception in {func=}\n{traceback.format_exc()}")
                 for text in texts:
                     send_message_to_telegram(
                         bot_token=API_TOKEN,

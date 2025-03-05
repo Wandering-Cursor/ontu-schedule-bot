@@ -1,7 +1,7 @@
 """This module contains chat classes"""
 
-from ontu_schedule_bot.classes.base import BaseClass
-from ontu_schedule_bot.classes.subscription import Subscription
+from .base import BaseClass
+from .subscription import Subscription
 
 
 class Chat(BaseClass):

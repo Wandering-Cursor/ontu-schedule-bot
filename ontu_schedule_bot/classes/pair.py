@@ -1,7 +1,7 @@
 """Describes pair"""
 
-from ontu_schedule_bot.classes.base import BaseClass, pair_end_times, pair_times
-from ontu_schedule_bot.classes.lesson import Lesson, TeachersLesson
+from .base import BaseClass, pair_end_times, pair_times
+from .lesson import Lesson, TeachersLesson
 
 MESSAGE_FORMAT = """
 Пара №{pair_no}, триває з {hour_0}:{minute_0} по {hour_1}:{minute_1} - {day_name}

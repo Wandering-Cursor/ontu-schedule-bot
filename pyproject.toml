@@ -27,8 +27,8 @@ dev = [
 distribution = false
 
 [tool.pdm.scripts]
-_isort="isort src/ontu_schedule_bot"
-_black="black src/ontu_schedule_bot"
-_pylint="pylint src/ontu_schedule_bot"
+_isort="isort ontu_schedule_bot/"
+_black="black ontu_schedule_bot/"
+_pylint="pylint ontu_schedule_bot/"
 lint={ composite=["_isort", "_black", "_pylint"], keep_going=true }
-bot={ call="ontu_schedule_bot.bot:main", working_dir="src" }
+bot={ call="ontu_schedule_bot.bot:main" }

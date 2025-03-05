@@ -13,8 +13,10 @@ from telegram.ext import (
     PicklePersistence,
 )
 
-from ontu_schedule_bot import classes, commands, patterns
-from ontu_schedule_bot.secret_config import API_TOKEN
+import classes
+import commands
+import patterns
+from secret_config import API_TOKEN
 
 os.makedirs("logs", exist_ok=True)
 
@@ -179,7 +181,8 @@ def main() -> None:
     for time_kwargs in classes.base.notification_times:
         application.job_queue.run_daily(
             commands.batch_pair_check,
-            time=datetime.time(tzinfo=pytz.timezone("Europe/Kiev"), **time_kwargs),
+            time=datetime.time(tzinfo=pytz.timezone(
+                "Europe/Kiev"), **time_kwargs),
             days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
             job_kwargs={
                 "misfire_grace_time": None,
