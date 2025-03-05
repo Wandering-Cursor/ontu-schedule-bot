@@ -1,6 +1,8 @@
 """Describes pair"""
 
-from .base import BaseClass, pair_end_times, pair_times
+from ontu_schedule_bot.enums import pair_end_times, pair_times
+
+from .base import BaseClass
 from .lesson import Lesson, TeachersLesson
 
 MESSAGE_FORMAT = """

@@ -4,7 +4,9 @@ import datetime
 
 import pytz
 
-from .base import BaseClass, pair_times
+from ontu_schedule_bot.enums import pair_times
+
+from .base import BaseClass
 from .day import Day
 from .pair import Pair
 
