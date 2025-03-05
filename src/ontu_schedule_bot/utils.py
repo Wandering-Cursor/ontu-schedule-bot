@@ -192,7 +192,8 @@ class Getter(BaseRequester):
         response = self.make_request(
             endpoint=Endpoints.SCHEDULE_BATCH_GET.value,
             method="GET",
-            timeout=300.0,  # Timeout in 5 minutes; Should be enough for real life cases.
+            # Timeout in 5 minutes; Should be enough for real life cases.
+            timeout=300.0,
         )
 
         answer: list[dict] = response.json()

@@ -1,6 +1,6 @@
 """This module defines faculty class"""
 
-from ontu_schedule_bot.classes.base import BaseClass
+from .base import BaseClass
 
 
 class Faculty(BaseClass):

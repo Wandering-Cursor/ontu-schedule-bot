@@ -3,8 +3,8 @@
 import datetime
 import re
 
-from ontu_schedule_bot.classes.base import BaseClass
-from ontu_schedule_bot.classes.teacher import Teacher
+from .base import BaseClass
+from .teacher import Teacher
 
 
 class Lesson(BaseClass):

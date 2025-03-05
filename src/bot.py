@@ -13,7 +13,8 @@ from telegram.ext import (
     PicklePersistence,
 )
 
-from ontu_schedule_bot import classes, commands, patterns
+from ontu_schedule_bot import commands, patterns
+from ontu_schedule_bot.enums import notification_times
 from ontu_schedule_bot.secret_config import API_TOKEN
 
 os.makedirs("logs", exist_ok=True)
@@ -176,7 +177,7 @@ def main() -> None:
         logger.error("Application doesn't have job_queue")
         return
 
-    for time_kwargs in classes.base.notification_times:
+    for time_kwargs in notification_times:
         application.job_queue.run_daily(
             commands.batch_pair_check,
             time=datetime.time(tzinfo=pytz.timezone("Europe/Kiev"), **time_kwargs),

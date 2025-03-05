@@ -3,9 +3,9 @@
 from collections import OrderedDict
 from operator import attrgetter
 
-from ontu_schedule_bot.classes.base import BaseClass
-from ontu_schedule_bot.classes.lesson import Lesson
-from ontu_schedule_bot.classes.pair import Pair
+from .base import BaseClass
+from .lesson import Lesson
+from .pair import Pair
 
 SUMMARY = "{day} - {pairs} пари ({first} - {last})"
 

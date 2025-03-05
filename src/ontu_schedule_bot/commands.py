@@ -720,7 +720,9 @@ async def get_pair_details(update: Update, _):
 
     await query.answer(text="Будь-ласка, зачекайте")
 
-    callback_data: tuple[str, classes.Pair, classes.Day] = tuple(query.data)  # type: ignore
+    callback_data: tuple[str, classes.Pair, classes.Day] = tuple(
+        query.data
+    )  # type: ignore
 
     pair = callback_data[1]
     day = callback_data[2]
@@ -803,7 +805,8 @@ async def batch_pair_check(
     for group in batch:
         chat_infos: list[dict[str, int]] = group["chat_info"]  # type: ignore
         for chat_info in chat_infos:
-            schedule: "utils.classes.Schedule" = group["schedule"]  # type: ignore
+            # type: ignore
+            schedule: "utils.classes.Schedule" = group["schedule"]
             pair, string = schedule.get_next_pair(find_all=False)
             if not pair:
                 continue

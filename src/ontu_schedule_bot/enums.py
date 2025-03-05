@@ -37,3 +37,33 @@ class Endpoints(Enum):
 
 FACULTY_NAME_INDEX = 1
 PAGE_INDEX = 2
+pair_times = [
+    {"hour": 8, "minute": 0},
+    {"hour": 9, "minute": 30},
+    {"hour": 11, "minute": 30},
+    {"hour": 13, "minute": 0},
+    {"hour": 14, "minute": 30},
+    {"hour": 16, "minute": 0},
+    {"hour": 17, "minute": 30},
+    {"hour": 19, "minute": 10},
+]
+pair_end_times = [
+    {"hour": 9, "minute": 20},
+    {"hour": 10, "minute": 50},
+    {"hour": 12, "minute": 50},
+    {"hour": 14, "minute": 20},
+    {"hour": 15, "minute": 50},
+    {"hour": 17, "minute": 20},
+    {"hour": 18, "minute": 50},
+    {"hour": 20, "minute": 30},
+]
+notification_times = [
+    {"hour": 7, "minute": 50},
+    {"hour": 9, "minute": 20},
+    {"hour": 11, "minute": 20},
+    {"hour": 12, "minute": 50},
+    {"hour": 14, "minute": 20},
+    {"hour": 15, "minute": 50},
+    {"hour": 17, "minute": 20},
+    {"hour": 19, "minute": 0},
+]

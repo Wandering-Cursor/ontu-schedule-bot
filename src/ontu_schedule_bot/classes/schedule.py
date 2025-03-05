@@ -4,9 +4,11 @@ import datetime
 
 import pytz
 
-from ontu_schedule_bot.classes.base import BaseClass, pair_times
-from ontu_schedule_bot.classes.day import Day
-from ontu_schedule_bot.classes.pair import Pair
+from ontu_schedule_bot.enums import pair_times
+
+from .base import BaseClass
+from .day import Day
+from .pair import Pair
 
 MAX_PAIRS = 8
 
