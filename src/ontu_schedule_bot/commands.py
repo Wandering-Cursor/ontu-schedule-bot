@@ -8,11 +8,8 @@ from telegram.constants import ChatType, ParseMode
 from telegram.error import Forbidden
 from telegram.ext import ContextTypes
 
-import classes
-import decorators
-import enums
-import utils
-from secret_config import DEBUG_CHAT_ID
+from ontu_schedule_bot import classes, decorators, enums, utils
+from ontu_schedule_bot.secret_config import DEBUG_CHAT_ID
 
 
 @decorators.reply_with_exception
@@ -58,8 +55,7 @@ async def start_command(
     if subscription and (subscription.group or subscription.teacher):
         keyboard.append(
             [
-                InlineKeyboardButton("Оновити підписку",
-                                     callback_data=("set_group",)),
+                InlineKeyboardButton("Оновити підписку", callback_data=("set_group",)),
             ]
         )
         keyboard.append(
@@ -307,8 +303,7 @@ async def teacher_select(update: Update, _) -> None:
     if not query.data:
         return
 
-    data: tuple[str, classes.TeacherForSchedule] = tuple(
-        query.data)  # type: ignore
+    data: tuple[str, classes.TeacherForSchedule] = tuple(query.data)  # type: ignore
 
     teacher_index = 1
     teacher: classes.TeacherForSchedule = data[teacher_index]
@@ -349,8 +344,7 @@ async def faculty_select(update: Update, _):
                 )
             ]
         )
-    keyboard.append([InlineKeyboardButton(
-        "Назад ⤴️", callback_data=("start",))])
+    keyboard.append([InlineKeyboardButton("Назад ⤴️", callback_data=("start",))])
 
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
@@ -397,8 +391,7 @@ async def group_select(update: Update, _) -> None:
 
     keyboard = []
 
-    groups = utils.Getter().get_groups(
-        faculty_name=data[enums.FACULTY_NAME_INDEX])
+    groups = utils.Getter().get_groups(faculty_name=data[enums.FACULTY_NAME_INDEX])
     number_of_pages = utils.get_number_of_pages(groups)  # type: ignore
     current_page: list[classes.Group] = utils.get_current_page(
         list_of_elements=groups,  # type: ignore
@@ -596,8 +589,7 @@ async def update_cache(update: Update, _):
     if not query.data:
         return
 
-    data: tuple[str, classes.Group, Message] = tuple(
-        query.data)  # type: ignore
+    data: tuple[str, classes.Group, Message] = tuple(query.data)  # type: ignore
     group_index = 1
 
     group: classes.Group = data[group_index]
@@ -729,14 +721,14 @@ async def get_pair_details(update: Update, _):
     await query.answer(text="Будь-ласка, зачекайте")
 
     callback_data: tuple[str, classes.Pair, classes.Day] = tuple(
-        query.data)  # type: ignore
+        query.data
+    )  # type: ignore
 
     pair = callback_data[1]
     day = callback_data[2]
 
     keyboard = [
-        [InlineKeyboardButton(
-            text="Назад ⤴️", callback_data=("day_details", day))]
+        [InlineKeyboardButton(text="Назад ⤴️", callback_data=("day_details", day))]
     ]
 
     await query.message.edit_text(
@@ -872,8 +864,7 @@ async def toggle_subscription(update: Update, _):
 
     chat = data[1]
     if not chat.subscription:
-        raise ValueError(
-            "В вас ще немає підписки! Здається ви мені бота зламали...")
+        raise ValueError("В вас ще немає підписки! Здається ви мені бота зламали...")
 
     new_status = not chat.subscription.is_active
 

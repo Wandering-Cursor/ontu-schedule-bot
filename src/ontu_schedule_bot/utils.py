@@ -7,9 +7,9 @@ from urllib.parse import urljoin
 import requests
 import telegram
 
-import classes
-from enums import Endpoints, Statuses
-from secret_config import API_URL
+from ontu_schedule_bot import classes
+from ontu_schedule_bot.enums import Endpoints, Statuses
+from ontu_schedule_bot.secret_config import API_URL
 
 
 # region Requests
@@ -98,8 +98,7 @@ class Getter(BaseRequester):
     def get_groups(self, faculty_name: str) -> list[classes.Group]:
         """This method returns a list of group from faculty name"""
         response = self.make_request(
-            endpoint=Endpoints.GROUPS_GET.value, json={
-                "faculty_name": faculty_name}
+            endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name}
         )
 
         answer: list[dict] = response.json()
@@ -170,8 +169,7 @@ class Getter(BaseRequester):
             requests.exceptions.RequestException,
             ConnectionError,
         ) as exception:
-            logging.exception(
-                "Exception occurred when updating notbot.\n%s", exception)
+            logging.exception("Exception occurred when updating notbot.\n%s", exception)
             return False
 
     def reset_cache(self, group: classes.Group) -> bool:
@@ -349,7 +347,7 @@ def get_current_page(list_of_elements: list[object], page: int = 0):
     if len(list_of_elements) <= PAGE_SIZE:
         return list_of_elements
 
-    return list_of_elements[page * PAGE_SIZE: (page + 1) * PAGE_SIZE]
+    return list_of_elements[page * PAGE_SIZE : (page + 1) * PAGE_SIZE]
 
 
 # endregion
@@ -370,7 +368,7 @@ def split_string(string: str, max_len: int = 4096) -> list[str]:
     """Split into an array of string with size no more than specified"""
     # From https://stackoverflow.com/a/13673133
     string_size = len(string)
-    return [string[i: i + max_len] for i in range(0, string_size, max_len)]
+    return [string[i : i + max_len] for i in range(0, string_size, max_len)]
 
 
 def send_message_to_telegram(
@@ -421,3 +419,37 @@ def send_message_to_telegram(
 
 
 # endregion
+
+
+pair_times = [
+    {"hour": 8, "minute": 0},
+    {"hour": 9, "minute": 30},
+    {"hour": 11, "minute": 30},
+    {"hour": 13, "minute": 0},
+    {"hour": 14, "minute": 30},
+    {"hour": 16, "minute": 0},
+    {"hour": 17, "minute": 30},
+    {"hour": 19, "minute": 10},
+]
+
+pair_end_times = [
+    {"hour": 9, "minute": 20},
+    {"hour": 10, "minute": 50},
+    {"hour": 12, "minute": 50},
+    {"hour": 14, "minute": 20},
+    {"hour": 15, "minute": 50},
+    {"hour": 17, "minute": 20},
+    {"hour": 18, "minute": 50},
+    {"hour": 20, "minute": 30},
+]
+
+notification_times = [
+    {"hour": 7, "minute": 50},
+    {"hour": 9, "minute": 20},
+    {"hour": 11, "minute": 20},
+    {"hour": 12, "minute": 50},
+    {"hour": 14, "minute": 20},
+    {"hour": 15, "minute": 50},
+    {"hour": 17, "minute": 20},
+    {"hour": 19, "minute": 0},
+]

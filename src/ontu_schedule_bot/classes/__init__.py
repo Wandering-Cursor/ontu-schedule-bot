@@ -1,5 +1,6 @@
 """Imports for classes"""
 
+from . import base
 from .base import BaseClass
 from .chat import Chat
 from .day import Day
@@ -14,6 +15,7 @@ from .subscription import Subscription
 from .teacher import Teacher, TeacherForSchedule
 
 __all__ = [
+    "base",
     "BaseClass",
     "Chat",
     "Faculty",

@@ -44,8 +44,7 @@ class TeacherForSchedule(BaseClass):
         obj = cls.make_object(parsed_params)
 
         if fetch_department:
-            department = Department.from_json(
-                parsed_params.pop("department", {}))
+            department = Department.from_json(parsed_params.pop("department", {}))
             obj.department = department
 
         return obj
