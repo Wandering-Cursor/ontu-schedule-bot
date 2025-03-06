@@ -1,5 +1,7 @@
 # Dockerfile for devcontainer
-FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
+FROM mcr.microsoft.com/devcontainers/python:3
+
+USER vscode
 
 # For some reason defaults to root user
-COPY --chown=vscode:vscode . /workspaces/ontu-schedule-bot
+COPY --chown=vscode:vscode . /workspace
