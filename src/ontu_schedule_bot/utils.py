@@ -24,9 +24,9 @@ class BaseRequester:
     def check_response(self, response: requests.Response):
         """
         Method that checks response
-        If we get non 200 response - raises ValueError
+        If we get non 20* response - raises ValueError
         """
-        if response.status_code != 200:
+        if 200 < response.status_code < 300:
             raise ValueError(
                 f"Received non OK response ({response.status_code})",
                 response,
@@ -98,7 +98,10 @@ class Getter(BaseRequester):
     def get_groups(self, faculty_name: str) -> list[classes.Group]:
         """This method returns a list of group from faculty name"""
         response = self.make_request(
-            endpoint=Endpoints.GROUPS_GET.value, json={"faculty_name": faculty_name}
+            endpoint=Endpoints.GROUPS_GET.value,
+            json={
+                "faculty_name": faculty_name,
+            },
         )
 
         answer: list[dict] = response.json()
@@ -169,7 +172,10 @@ class Getter(BaseRequester):
             requests.exceptions.RequestException,
             ConnectionError,
         ) as exception:
-            logging.exception("Exception occurred when updating notbot.\n%s", exception)
+            logging.exception(
+                "Exception occurred when updating notbot.\n%s",
+                exception,
+            )
             return False
 
     def reset_cache(self, group: classes.Group) -> bool:
@@ -272,7 +278,7 @@ class Setter(BaseRequester):
                 "chat_id": message.chat.id,
                 "chat_name": message.chat.effective_name,
                 "chat_info": message.to_json(),
-                "is_forum": message.chat.is_forum,
+                "is_forum": message.chat.is_forum or False,
                 "thread_id": message.message_thread_id,
             },
         )

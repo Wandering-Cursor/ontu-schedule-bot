@@ -1,0 +1,13 @@
+name: "ontu-schedule"
+
+services:
+  bot:
+    build:
+      context: ../
+      dockerfile: .devcontainer/Dockerfile
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    volumes:
+      - bot-data:/workspace/
+
+volumes:
+  bot-data:
