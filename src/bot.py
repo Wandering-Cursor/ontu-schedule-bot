@@ -173,6 +173,9 @@ def main() -> None:
         )
     )
 
+    # Consider adding a dedicated error handler
+    # application.add_error_handler
+
     if not isinstance(application.job_queue, JobQueue):
         logger.error("Application doesn't have job_queue")
         return
