@@ -4,11 +4,11 @@ import logging
 import traceback
 from typing import Callable
 
-from requests.exceptions import RequestException
+from httpx import HTTPError
 from telegram import Bot, Update
 from telegram.ext import ContextTypes
 
-from ontu_schedule_bot.secret_config import API_TOKEN, DEBUG_CHAT_ID
+from ontu_schedule_bot.secret_config import settings
 from ontu_schedule_bot.utils import send_message_to_telegram, split_string
 
 
@@ -38,12 +38,9 @@ async def send_exception(
     if func:
         text_full += str(f"Arguments of `{func.__name__}`:")
 
-    pretty_args = [
-        {"original": arg, "dict": getattr(arg, "__dict__", None)} for arg in args
-    ]
+    pretty_args = [{"original": arg, "dict": getattr(arg, "__dict__", None)} for arg in args]
     pretty_kwargs = [
-        {"key": key, "value": item, "dict": getattr(item, "__dict__", None)}
-        for key, item in kwargs.items()
+        {"key": key, "value": item, "dict": getattr(item, "__dict__", None)} for key, item in kwargs.items()
     ]
     text_full += str(f"\n{pretty_args=};{pretty_kwargs=}")
 
@@ -51,7 +48,7 @@ async def send_exception(
 
     for text in texts:
         await bot.send_message(
-            chat_id=DEBUG_CHAT_ID,
+            chat_id=settings.DEBUG_CHAT_ID,
             text=text,
             parse_mode="",
         )
@@ -63,10 +60,7 @@ def reply_with_exception(func: Callable):
     """
 
     async def inner(*args, **kwargs):
-        pretty_args = [
-            {"original": arg, "str": str(arg), "dict": getattr(arg, "__dict__", None)}
-            for arg in args
-        ]
+        pretty_args = [{"original": arg, "str": str(arg), "dict": getattr(arg, "__dict__", None)} for arg in args]
         pretty_kwargs = [
             {
                 "key": key,
@@ -86,7 +80,7 @@ def reply_with_exception(func: Callable):
         try:
             value = await func(*args, **kwargs)
             return value
-        except (ValueError, RequestException) as exception:
+        except (ValueError, HTTPError) as exception:
             logging.exception(msg=f"Exception in {func}\n{exception}")
             context = kwargs.pop("context", None)
             update = kwargs.pop("update", None)
@@ -100,8 +94,8 @@ def reply_with_exception(func: Callable):
                 texts = split_string(f"Exception in {func=}\n{traceback.format_exc()}")
                 for text in texts:
                     send_message_to_telegram(
-                        bot_token=API_TOKEN,
-                        chat_id=DEBUG_CHAT_ID,
+                        bot_token=settings.API_TOKEN,
+                        chat_id=settings.DEBUG_CHAT_ID,
                         topic_id=None,
                         text=text,
                         parse_mode=None,

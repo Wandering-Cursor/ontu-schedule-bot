@@ -9,7 +9,7 @@ from telegram.error import Forbidden
 from telegram.ext import ContextTypes
 
 from ontu_schedule_bot import classes, decorators, enums, utils
-from ontu_schedule_bot.secret_config import DEBUG_CHAT_ID
+from ontu_schedule_bot.secret_config import settings
 
 
 @decorators.reply_with_exception
@@ -785,7 +785,7 @@ async def batch_pair_check_handler(update: Update, context: ContextTypes.DEFAULT
     """This method is used to check for upcoming pairs"""
     if not update.effective_chat:
         return
-    if update.effective_chat.id != DEBUG_CHAT_ID:
+    if update.effective_chat.id != settings.DEBUG_CHAT_ID:
         return
 
     await batch_pair_check(context=context, _=update)
@@ -818,7 +818,7 @@ async def batch_pair_check(
             except Forbidden as exc:
                 logging.exception(exc)
                 await context.bot.send_message(
-                    chat_id=DEBUG_CHAT_ID,
+                    chat_id=settings.DEBUG_CHAT_ID,
                     text=f"Користувач заблокував бота: {chat_info=}\nВ методі batch_pair_check",
                 )
                 continue
@@ -840,7 +840,7 @@ async def batch_pair_check(
     end_time = time.time()
 
     await context.bot.send_message(
-        chat_id=DEBUG_CHAT_ID,
+        chat_id=settings.DEBUG_CHAT_ID,
         text=f"Batch pair check finished in {end_time - start_time:.2f} seconds",
         disable_notification=True,
     )
@@ -897,7 +897,7 @@ async def update_notbot(update: Update, _) -> None:
     """
     if not update.effective_chat:
         return
-    if update.effective_chat.id != DEBUG_CHAT_ID:
+    if update.effective_chat.id != settings.DEBUG_CHAT_ID:
         return
 
     logging.info("Updating notbot")
@@ -951,7 +951,7 @@ async def send_message_campaign(
     if not message or not message.text:
         return
 
-    if message.chat.id != DEBUG_CHAT_ID:
+    if message.chat.id != settings.DEBUG_CHAT_ID:
         return
 
     text = message.text.replace("/send_campaign ", "")

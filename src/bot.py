@@ -15,7 +15,7 @@ from telegram.ext import (
 
 from ontu_schedule_bot import commands, patterns
 from ontu_schedule_bot.enums import notification_times
-from ontu_schedule_bot.secret_config import API_TOKEN
+from ontu_schedule_bot.secret_config import settings
 
 os.makedirs("logs", exist_ok=True)
 
@@ -41,7 +41,7 @@ def main() -> None:
 
     application = (
         Application.builder()
-        .token(API_TOKEN)
+        .token(settings.API_TOKEN)
         .persistence(persistence)
         .arbitrary_callback_data(True)
         .concurrent_updates(True)

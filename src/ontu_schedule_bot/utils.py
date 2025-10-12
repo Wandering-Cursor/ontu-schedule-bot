@@ -2,43 +2,55 @@
 
 import logging
 import math
-from urllib.parse import urljoin
 
-import requests
 import telegram
+import httpx
 
 from ontu_schedule_bot import classes
 from ontu_schedule_bot.enums import Endpoints, Statuses
-from ontu_schedule_bot.secret_config import API_URL
+from ontu_schedule_bot.secret_config import settings
 
 
-# region Requests
+# region Requesters
 class BaseRequester:
-    """Defines url for requests and method of request"""
+    """Base class for making API requests"""
 
-    _url: str = API_URL
-    _method: str = "POST"
+    _method = "POST"
 
-    session = requests.Session()
+    def __init__(self) -> None:
+        super().__init__()
 
-    def check_response(self, response: requests.Response):
+        self.client = httpx.Client(
+            base_url=str(settings.API_URL),
+            timeout=httpx.Timeout(
+                timeout=15,
+            ),
+        )
+
+    def check_response(self, response: "httpx.Response"):
         """
         Method that checks response
         If we get non 20* response - raises ValueError
         """
         if 200 < response.status_code < 300:
-            raise ValueError(
-                f"Received non OK response ({response.status_code})",
-                response,
-                response.content,
+            raise RuntimeError(
+                {
+                    "msg": "Request failed",
+                    "response": {
+                        "status_code": response.status_code,
+                        "content": response.content,
+                    },
+                    "request": {
+                        "method": response.request.method,
+                        "url": response.request.url,
+                    },
+                }
             )
         return response
 
-    def make_request(self, endpoint: str, timeout: float = 15.0, **kwargs):
+    def make_request(self, endpoint: str, timeout: float | None = None, **kwargs):
         """
         Method for making and getting requests;
-
-        Timeout is specified in seconds. Default is 15.0 seconds;
         """
         method: str = kwargs.pop("method", "") or self._method
         if not isinstance(
@@ -50,15 +62,12 @@ class BaseRequester:
         ):
             raise ValueError("Please don't override method with non str/bytes")
 
-        url = urljoin(self._url, endpoint)
-
-        response = self.session.request(
-            url=url,
-            method=method,
+        response = self.client.request(
+            method=method if isinstance(method, str) else method.decode(),
+            url=endpoint,
             data=kwargs.pop("data", None),
             json=kwargs.pop("json", None),
             timeout=timeout,
-            **kwargs,
         )
 
         return self.check_response(response=response)
@@ -81,6 +90,7 @@ class Getter(BaseRequester):
         answer = response.json()
         if not answer:
             return None
+
         return classes.Chat.from_json(json_dict=answer)
 
     def get_faculties(self) -> list[classes.Faculty]:
@@ -91,8 +101,10 @@ class Getter(BaseRequester):
 
         answer: list[dict] = response.json()
         faculties: list[classes.Faculty] = []
+
         for faculty in answer:
             faculties.append(classes.Faculty.from_json(faculty))
+
         return faculties
 
     def get_groups(self, faculty_name: str) -> list[classes.Group]:
@@ -106,8 +118,10 @@ class Getter(BaseRequester):
 
         answer: list[dict] = response.json()
         groups: list[classes.Group] = []
+
         for group in answer:
             groups.append(classes.Group.from_json(group))
+
         return groups
 
     def get_all_chats(self) -> list[classes.Chat]:
@@ -118,8 +132,10 @@ class Getter(BaseRequester):
 
         answer: list[dict] = response.json()
         chat_list: list[classes.Chat] = []
+
         for group in answer:
             chat_list.append(classes.Chat.from_json(group))
+
         return chat_list
 
     def get_students_schedule(self, group: classes.Group) -> classes.Schedule:
@@ -130,11 +146,10 @@ class Getter(BaseRequester):
         )
 
         answer: dict = response.json()
+
         return classes.Schedule.from_json(answer)
 
-    def get_teachers_schedule(
-        self, teacher: classes.TeacherForSchedule
-    ) -> classes.Schedule:
+    def get_teachers_schedule(self, teacher: classes.TeacherForSchedule) -> classes.Schedule:
         """This method gets schedule for some specific teacher (schedule)"""
         response = self.make_request(
             endpoint=Endpoints.TEACHERS_SCHEDULE.value,
@@ -148,8 +163,10 @@ class Getter(BaseRequester):
         """This method returns schedule from subscription"""
         if subscription.group:
             return self.get_students_schedule(group=subscription.group)
+
         if subscription.teacher:
             return self.get_teachers_schedule(teacher=subscription.teacher)
+
         raise ValueError("Subscription must have either group or teacher")
 
     def update_notbot(
@@ -166,16 +183,22 @@ class Getter(BaseRequester):
                 method="GET",
                 timeout=150,  # Timeout in 2.5 minutes;
             )
+
             return True
         except (
             ValueError,
-            requests.exceptions.RequestException,
+            httpx.HTTPError,
             ConnectionError,
         ) as exception:
             logging.exception(
-                "Exception occurred when updating notbot.\n%s",
-                exception,
+                {
+                    "msg": "Exception occurred when updating notbot",
+                    "exc": exception,
+                },
+                exc_info=exception,
+                stack_info=True,
             )
+
             return False
 
     def reset_cache(self, group: classes.Group) -> bool:
@@ -189,6 +212,7 @@ class Getter(BaseRequester):
         )
 
         answer: dict = response.json()
+
         return answer.get("count", 0) >= 0
 
     def get_batch_schedule(
@@ -211,13 +235,12 @@ class Getter(BaseRequester):
                     "schedule": classes.Schedule.from_json(group["schedule"]),
                 }
             )
+
         return result
 
     def get_list_of_departments(self) -> list[classes.Department]:
         """Returns a list of departments"""
-        response = self.make_request(
-            endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET"
-        )
+        response = self.make_request(endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET")
 
         answer: list[dict] = response.json()
 
@@ -227,9 +250,7 @@ class Getter(BaseRequester):
 
         return result
 
-    def get_teachers_by_department(
-        self, department: classes.Department
-    ) -> list[classes.TeacherForSchedule]:
+    def get_teachers_by_department(self, department: classes.Department) -> list[classes.TeacherForSchedule]:
         """Returns a list of teachers for some department"""
         response = self.make_request(
             endpoint=Endpoints.DEPARTMENT_GET.value,
@@ -282,9 +303,12 @@ class Setter(BaseRequester):
                 "thread_id": message.message_thread_id,
             },
         )
+
         answer: dict = response.json()
+
         if answer.pop("status", "") == Statuses.OK.value:
             return Getter().get_chat(message)
+
         return answer
 
     def set_chat_group(
@@ -306,8 +330,10 @@ class Setter(BaseRequester):
         )
 
         answer: dict = response.json()
+
         if answer.pop("status", "") == Statuses.OK.value:
             return classes.Subscription.from_json(answer)
+
         return answer
 
     def set_chat_teacher(
@@ -331,8 +357,10 @@ class Setter(BaseRequester):
         )
 
         answer: dict = response.json()
+
         if answer.pop("status", "") == Statuses.OK.value:
             return classes.Subscription.from_json(answer)
+
         return answer
 
 
@@ -374,6 +402,7 @@ def split_string(string: str, max_len: int = 4096) -> list[str]:
     """Split into an array of string with size no more than specified"""
     # From https://stackoverflow.com/a/13673133
     string_size = len(string)
+
     return [string[i : i + max_len] for i in range(0, string_size, max_len)]
 
 
@@ -404,10 +433,10 @@ def send_message_to_telegram(
     if topic_id:
         data["message_thread_id"] = topic_id
     try:
-        response = requests.get(
+        response = httpx.get(
             url=api_endpoint,
-            data=data,
-            timeout=5,
+            params=data,
+            timeout=15,
         )
 
         if response.status_code != 200:
@@ -416,7 +445,7 @@ def send_message_to_telegram(
         # We've sent the message
         return True
     except (
-        requests.exceptions.RequestException,
+        httpx.HTTPError,
         ConnectionError,
         ValueError,
     ) as exception:
