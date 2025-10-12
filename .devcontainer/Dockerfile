@@ -1,7 +1,6 @@
 # Dockerfile for devcontainer
-FROM mcr.microsoft.com/devcontainers/python:3
+FROM python:3-alpine
 
-USER vscode
+RUN apk add --no-cache git curl
 
-# For some reason defaults to root user
-COPY --chown=vscode:vscode . /workspace
+RUN pip install -U pdm

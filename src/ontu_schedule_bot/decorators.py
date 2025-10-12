@@ -77,8 +77,7 @@ def reply_with_exception(func: Callable):
             for key, item in kwargs.items()
         ]
         logging.info(
-            "Running `%s` with `reply_with_exception` decorator.\n"
-            "Args: %s\nKwargs: %s",
+            "Running `%s` with `reply_with_exception` decorator.\nArgs: %s\nKwargs: %s",
             func.__name__,
             pretty_args,
             pretty_kwargs,

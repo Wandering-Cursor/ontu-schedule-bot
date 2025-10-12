@@ -169,8 +169,7 @@ async def start_for_teachers(update: Update, _: ContextTypes.DEFAULT_TYPE) -> No
     main_text = "Чим можу допомогти?\n\n"
     if subscription and subscription.teacher:
         main_text += (
-            "Ви підписані на розклад для викладача: "
-            f"{subscription.teacher.short_name}"
+            f"Ви підписані на розклад для викладача: {subscription.teacher.short_name}"
         )
     elif subscription and subscription.group:
         main_text += (
@@ -423,7 +422,7 @@ async def group_select(update: Update, _) -> None:
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     await query.message.edit_text(
-        text=f"Тепер - оберіть групу\nСторінка {page+1}/{number_of_pages}",
+        text=f"Тепер - оберіть групу\nСторінка {page + 1}/{number_of_pages}",
         reply_markup=reply_markup,
     )
 
@@ -720,9 +719,7 @@ async def get_pair_details(update: Update, _):
 
     await query.answer(text="Будь-ласка, зачекайте")
 
-    callback_data: tuple[str, classes.Pair, classes.Day] = tuple(
-        query.data
-    )  # type: ignore
+    callback_data: tuple[str, classes.Pair, classes.Day] = tuple(query.data)  # type: ignore
 
     pair = callback_data[1]
     day = callback_data[2]
@@ -985,5 +982,5 @@ async def send_message_campaign(
     end = time.time()
 
     await message.reply_text(
-        f"Повідомлення надіслано всім отримувачам за {round(end-start, 2)} секунд"
+        f"Повідомлення надіслано всім отримувачам за {round(end - start, 2)} секунд"
     )
