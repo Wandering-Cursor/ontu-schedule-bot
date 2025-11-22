@@ -8,7 +8,7 @@ import httpx
 
 from ontu_schedule_bot import classes
 from ontu_schedule_bot.enums import Endpoints, Statuses
-from ontu_schedule_bot.secret_config import settings
+from ontu_schedule_bot.settings import settings
 
 
 # region Requesters

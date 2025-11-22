@@ -9,7 +9,10 @@ from telegram.error import Forbidden
 from telegram.ext import ContextTypes
 
 from ontu_schedule_bot import classes, decorators, enums, utils
-from ontu_schedule_bot.secret_config import settings
+from ontu_schedule_bot.settings import settings
+from ontu_schedule_bot.third_party.admin.client import AdminClient
+from ontu_schedule_bot.third_party.admin.enums import Platform
+from ontu_schedule_bot.third_party.admin.schemas import CreateChatRequest
 
 
 @decorators.reply_with_exception
@@ -26,18 +29,26 @@ async def start_command(
 
     await telegram_chat.send_chat_action(action="typing")
 
-    chat_entity = None
-    try:
-        chat_entity = utils.Getter().get_chat(message)
-    except ValueError as error:
-        logging.warning(error)
+    client = AdminClient()
 
-    if not chat_entity:
-        chat_entity = utils.Setter().new_chat(message)
-        if not isinstance(chat_entity, classes.Chat):
-            raise ValueError("Could not create chat for whatever reason!")
+    chat = client.get_or_create_chat(
+        chat_info=CreateChatRequest(
+            platform=Platform.TELEGRAM,
+            platform_chat_id=str(telegram_chat.id),
+            title=telegram_chat.title or telegram_chat.full_name or "No Name",
+            username=telegram_chat.username or None,
+            first_name=telegram_chat.first_name or None,
+            last_name=telegram_chat.last_name or None,
+            language_code=update.effective_user.language_code if update.effective_user else None,
+            additional_info={
+                "type": telegram_chat.type,
+                "is_forum": telegram_chat.is_forum,
+                "topic_id": message.message_thread_id,
+            }
+        )
+    )
 
-    subscription = chat_entity.subscription
+    subscription = client.get_subscription(chat_id=chat.platform_chat_id)
 
     show_teacher = all(
         [
@@ -47,12 +58,11 @@ async def start_command(
         ]
     )
     if show_teacher:
-        await start_for_teachers(update=update, _=context)
         return
 
     subscription_text = "Ви не підписані на розклад"
     keyboard = []
-    if subscription and (subscription.group or subscription.teacher):
+    if subscription.groups or subscription.teachers:
         keyboard.append(
             [
                 InlineKeyboardButton("Оновити підписку", callback_data=("set_group",)),
@@ -65,22 +75,23 @@ async def start_command(
                         "Отримувати повідомлення перед парою? "
                         f"{'✅' if subscription.is_active else '❌'}"
                     ),
-                    callback_data=("toggle_subscription", chat_entity),
+                    callback_data=("toggle_subscription", chat),
                 )
             ]
         )
-        if subscription.group:
-            subscription_text = (
-                "Ви підписані на розклад для групи: "
-                f"{subscription.group.name} "
-                f"({subscription.group.faculty.name})"
+
+        subscription_text = ""
+
+        if subscription.groups:
+            subscription_text += (
+                "Ви підписані на розклад для груп\n"
             )
-        elif subscription.teacher:
-            subscription_text = (
-                "Поки що Ви підписані на розклад для "
-                f"викладача: {subscription.teacher.short_name}"
+        if subscription.teachers:
+            subscription_text += (
+                "Поки що Ви підписані на розклад для викладачів\n"
             )
-    elif not subscription:
+    else:
+        # Replace with subscription management (add/remove groups/teachers)
         keyboard.append(
             [
                 InlineKeyboardButton(
@@ -88,14 +99,6 @@ async def start_command(
                 ),
             ]
         )
-
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                "Розклад викладачів 🌚", callback_data=("start_for_teachers",)
-            ),
-        ]
-    )
 
     kwargs = {
         "text": f"Чим можу допомогти?\n\n{subscription_text}",
@@ -110,85 +113,6 @@ async def start_command(
     elif update.message:
         await update.message.reply_html(**kwargs)
 
-
-@decorators.reply_with_exception
-async def start_for_teachers(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
-    """Executed when user initiates conversation, or returns to main menu"""
-    telegram_chat = update.effective_chat
-    message = update.effective_message
-    if not telegram_chat:
-        return
-    if not message:
-        return
-
-    await telegram_chat.send_chat_action(action="typing")
-
-    chat_entity = None
-    try:
-        chat_entity = utils.Getter().get_chat(message)
-    except ValueError as error:
-        logging.error(error)
-    if not chat_entity:
-        chat_entity = utils.Setter().new_chat(message=telegram_chat)
-        if not isinstance(chat_entity, classes.Chat):
-            raise ValueError("Could not create chat for whatever reason!")
-
-    subscription = chat_entity.subscription
-
-    keyboard = []
-    set_teacher_button_text = "Отримувати розклад викладача"
-    if subscription and subscription.teacher:
-        set_teacher_button_text = "Оновити підписку на розклад викладача"
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                set_teacher_button_text, callback_data=("set_teacher",)
-            ),
-        ]
-    )
-    if subscription and (subscription.teacher or subscription.group):
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    text=(
-                        "Отримувати повідомлення перед парою? "
-                        f"{'✅' if subscription.is_active else '❌'}"
-                    ),
-                    callback_data=("toggle_subscription", chat_entity),
-                )
-            ]
-        )
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                "Перейти до розкладу студента 🌝", callback_data=("start", "force")
-            ),
-        ]
-    )
-
-    main_text = "Чим можу допомогти?\n\n"
-    if subscription and subscription.teacher:
-        main_text += (
-            f"Ви підписані на розклад для викладача: {subscription.teacher.short_name}"
-        )
-    elif subscription and subscription.group:
-        main_text += (
-            "Ви підписані на розклад для групи: "
-            f"{subscription.group.name} ({subscription.group.faculty.name})\n"
-            "Бажаєте отримувати розклад викладача?"
-        )
-    else:
-        main_text += "Ви не підписані на розклад. Бажаєте це змінити?"
-
-    kwargs = {
-        "text": main_text,
-        "reply_markup": InlineKeyboardMarkup(inline_keyboard=keyboard),
-    }
-
-    if update.callback_query and update.callback_query.message:
-        await update.callback_query.message.edit_text(**kwargs)
-    elif update.message:
-        await update.message.reply_html(**kwargs)
 
 
 @decorators.reply_with_exception
@@ -220,7 +144,7 @@ async def department_select(update: Update, _) -> None:
         [
             InlineKeyboardButton(
                 "Назад ⤴️",
-                callback_data=("start_for_teachers",),
+                callback_data=("start",),
             )
         ]
     )

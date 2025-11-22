@@ -8,7 +8,7 @@ from httpx import HTTPError
 from telegram import Bot, Update
 from telegram.ext import ContextTypes
 
-from ontu_schedule_bot.secret_config import settings
+from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.utils import send_message_to_telegram, split_string
 
 

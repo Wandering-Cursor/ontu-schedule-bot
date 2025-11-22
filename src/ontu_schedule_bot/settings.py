@@ -4,8 +4,12 @@ import pydantic
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    API_TOKEN: str
+    BOT_TOKEN: str
+
     API_URL: pydantic.HttpUrl
+    API_USERNAME: str
+    API_PASSWORD: pydantic.SecretStr
+
     DEBUG_CHAT_ID: int
 
 settings = Settings()

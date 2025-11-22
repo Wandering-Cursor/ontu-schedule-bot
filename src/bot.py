@@ -15,7 +15,7 @@ from telegram.ext import (
 
 from ontu_schedule_bot import commands, patterns
 from ontu_schedule_bot.enums import notification_times
-from ontu_schedule_bot.secret_config import settings
+from ontu_schedule_bot.settings import settings
 
 os.makedirs("logs", exist_ok=True)
 
