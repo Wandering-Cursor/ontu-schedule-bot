@@ -1,5 +1,5 @@
 import datetime
-from typing import TypeVar
+from typing import Literal, TypeVar
 import pydantic
 
 from ontu_schedule_bot.third_party.admin.enums import Platform
@@ -138,6 +138,28 @@ class Lesson(Schema):
         examples=["B-123", "Онлайн"],
     )
 
+    def _as_string_short(self) -> str:
+        return f"{self.short_name} - {self.teacher.full_name}"
+
+    def _as_string_full(self) -> str:
+        parts = [f"{self.short_name} - {self.full_name}"]
+
+        parts.append(f"Викладач: {self.teacher.full_name}")
+
+        if self.auditorium:
+            parts.append(f"Аудиторія: {self.auditorium}")
+
+        if self.card:
+            parts.append(f"Деталі: {self.card}")
+
+        return "\n".join(parts)
+
+    def as_string(self, format: Literal["short", "full"] = "short") -> str:
+        if format == "short":
+            return self._as_string_short()
+        else:
+            return self._as_string_full()
+
 
 class Pair(Schema):
     number: int = pydantic.Field(
@@ -148,12 +170,16 @@ class Pair(Schema):
 
 
 class DaySchedule(Schema):
+    for_entity: str
+
     date: datetime.date
 
     pairs: list[Pair]
 
 
 class WeekSchedule(Schema):
+    for_entity: str
+
     days: list[DaySchedule]
 
 

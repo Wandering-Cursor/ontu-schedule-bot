@@ -129,6 +129,31 @@ def main() -> None:
     )
 
     application.add_handler(
+        CommandHandler(
+            command="today",
+            callback=commands.get_today_schedule,
+        )
+    )
+    application.add_handler(
+        CommandHandler(
+            command="tomorrow",
+            callback=commands.get_tomorrow_schedule,
+        )
+    )
+    application.add_handler(
+        CommandHandler(
+            command="week",
+            callback=commands.get_week_schedule,
+        )
+    )
+    application.add_handler(
+        CommandHandler(
+            "next_pair",
+            commands.next_pair,
+        )
+    )
+
+    application.add_handler(
         CallbackQueryHandler(
             callback=commands.get_schedule,
             pattern=patterns.get_schedule,
@@ -150,25 +175,6 @@ def main() -> None:
         CallbackQueryHandler(
             callback=commands.toggle_subscription,
             pattern=patterns.toggle_subscription_pattern,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            command="next_pair",
-            callback=commands.pair_check_per_chat,
-        )
-    )
-    application.add_handler(
-        CommandHandler(
-            command="schedule",
-            callback=commands.get_schedule,
-        )
-    )
-    application.add_handler(
-        CommandHandler(
-            command="today",
-            callback=commands.get_today,
         )
     )
 

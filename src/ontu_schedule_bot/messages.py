@@ -1,12 +1,18 @@
+import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 
+from ontu_schedule_bot import utils
 from ontu_schedule_bot.third_party.admin.schemas import (
     Chat,
+    DaySchedule,
     Department,
     Faculty,
     GroupPaginatedResponse,
+    Lesson,
+    Pair,
     Subscription,
     TeacherPaginatedResponse,
+    WeekSchedule,
 )
 
 
@@ -549,5 +555,105 @@ async def select_department(
     await edit_or_reply(
         update=update,
         text=f"Оберіть викладача кафедри {department.short_name} для підписки:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def send_lesson_details(
+    update: "Update",
+    pair: "Pair",
+    day_schedule: "DaySchedule",
+) -> None:
+    """Sends detailed information about a lesson."""
+    lessons = pair.lessons
+
+    start_time, end_time = utils.get_pair_time_bounds(pair.number)
+
+    text = f"Деталі заняття №{pair.number} ({start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}) від {utils.get_weekday_name(day_schedule.date)} ({day_schedule.date.strftime('%d.%m')}):\n\n"
+
+    for lesson in lessons:
+        text += f"{lesson.as_string(format='full')}\n\n"
+
+    await edit_or_reply(
+        update=update,
+        text=text,
+    )
+
+
+async def send_day_schedule(
+    update: "Update",
+    day_schedule: "DaySchedule",
+) -> None:
+    """Gets day schedule from admin service"""
+    text = f"Розклад на  {utils.get_weekday_name(day_schedule.date)} ({day_schedule.date.strftime('%d.%m')}) для {day_schedule.for_entity}:\n\n"
+
+    keyboard = []
+
+    for pair in day_schedule.pairs:
+        if not pair.lessons:
+            continue
+
+        pair_row = []
+
+        for lesson in pair.lessons:
+            text += f"{pair.number}. {lesson.as_string(format='short')}\n"
+            pair_row.append(
+                InlineKeyboardButton(
+                    text=f"{pair.number}. {lesson.short_name}",
+                    callback_data=(
+                        "get_lesson_details",
+                        lesson,
+                        day_schedule,
+                    ),
+                )
+            )
+
+        keyboard.append(pair_row)
+
+    await edit_or_reply(
+        update=update,
+        text=text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def send_no_classes_message(
+    update: "Update",
+    date: datetime.date,
+) -> None:
+    """Sends a message indicating no classes are scheduled for the given date."""
+    text = f"На {date.strftime('%d.%m.%Y')} занять не знайдено."
+
+    await edit_or_reply(
+        update=update,
+        text=text,
+    )
+
+
+async def send_week_schedule(
+    update: "Update",
+    week_schedule: WeekSchedule,
+) -> None:
+    """
+    Sends a message with keyboard buttons to get a specific day's schedule.
+    """
+    keyboard = []
+
+    for day_schedule in week_schedule.days:
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{utils.get_weekday_name(day_schedule.date)} - {day_schedule.date.strftime('%d.%m')}",
+                    callback_data=(
+                        "get_schedule",
+                        day_schedule.date,
+                    ),
+                ),
+            ]
+        )
+
+    await edit_or_reply(
+        update=update,
+        text=f"Оберіть день тижня, щоб побачити розклад.\nДля {week_schedule.for_entity}",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )

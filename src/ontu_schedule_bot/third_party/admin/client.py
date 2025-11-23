@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Generator
 import httpx
@@ -35,6 +36,9 @@ class AdminClient:
             timeout=httpx.Timeout(
                 30.0,
             ),
+            headers={
+                "Content-Type": "application/json",
+            },
         )
 
     def get_chat(self, chat_id: str) -> Chat:
@@ -192,6 +196,23 @@ class AdminClient:
             for item in response.json()
         ]
 
+    def schedule_day(
+        self, chat_id: str, date: datetime.date
+    ) -> list[DaySchedule | None]:
+        response = self.client.get(
+            f"/chat/schedule/day/{date.isoformat()}",
+            headers={
+                "X-Chat-ID": chat_id,
+            },
+        )
+
+        response.raise_for_status()
+
+        return [
+            DaySchedule.model_validate(item) if item is not None else None
+            for item in response.json()
+        ]
+
     def schedule_week(self, chat_id: str) -> list[WeekSchedule]:
         response = self.client.get(
             "/chat/schedule/week",
@@ -200,7 +221,12 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            # TODO: Use logging
+            print("Error fetching week schedule:", e.response.text)
+            raise e
 
         return [WeekSchedule.model_validate(item) for item in response.json()]
 

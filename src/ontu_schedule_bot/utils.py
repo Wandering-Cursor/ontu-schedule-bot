@@ -1,8 +1,10 @@
 """This is a utils module, it contains Requests and pagination for bot"""
 
+import datetime
 import logging
 import math
 
+import pytz
 import telegram
 import httpx
 
@@ -149,7 +151,9 @@ class Getter(BaseRequester):
 
         return classes.Schedule.from_json(answer)
 
-    def get_teachers_schedule(self, teacher: classes.TeacherForSchedule) -> classes.Schedule:
+    def get_teachers_schedule(
+        self, teacher: classes.TeacherForSchedule
+    ) -> classes.Schedule:
         """This method gets schedule for some specific teacher (schedule)"""
         response = self.make_request(
             endpoint=Endpoints.TEACHERS_SCHEDULE.value,
@@ -240,7 +244,9 @@ class Getter(BaseRequester):
 
     def get_list_of_departments(self) -> list[classes.Department]:
         """Returns a list of departments"""
-        response = self.make_request(endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET")
+        response = self.make_request(
+            endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET"
+        )
 
         answer: list[dict] = response.json()
 
@@ -250,7 +256,9 @@ class Getter(BaseRequester):
 
         return result
 
-    def get_teachers_by_department(self, department: classes.Department) -> list[classes.TeacherForSchedule]:
+    def get_teachers_by_department(
+        self, department: classes.Department
+    ) -> list[classes.TeacherForSchedule]:
         """Returns a list of teachers for some department"""
         response = self.make_request(
             endpoint=Endpoints.DEPARTMENT_GET.value,
@@ -454,3 +462,57 @@ def send_message_to_telegram(
 
 
 # endregion
+
+
+def current_time_in_kiev() -> datetime.datetime:
+    """Returns current time in Kiev timezone"""
+    kiev_tz = pytz.timezone("Europe/Kiev")
+    return datetime.datetime.now(tz=kiev_tz)
+
+
+PAIR_START_TIME = {
+    1: datetime.time(hour=8, minute=0),
+    2: datetime.time(hour=9, minute=30),
+    3: datetime.time(hour=11, minute=30),
+    4: datetime.time(hour=13, minute=0),
+    5: datetime.time(hour=14, minute=30),
+    6: datetime.time(hour=16, minute=0),
+    7: datetime.time(hour=17, minute=30),
+    8: datetime.time(hour=19, minute=10),
+}
+PAIR_END_TIME = {
+    1: datetime.time(hour=9, minute=20),
+    2: datetime.time(hour=10, minute=50),
+    3: datetime.time(hour=12, minute=50),
+    4: datetime.time(hour=14, minute=20),
+    5: datetime.time(hour=15, minute=50),
+    6: datetime.time(hour=17, minute=20),
+    7: datetime.time(hour=18, minute=50),
+    8: datetime.time(hour=20, minute=30),
+}
+
+
+def get_pair_time_bounds(pair_number: int) -> tuple[datetime.time, datetime.time]:
+    """Returns start and end time of some pair by its number"""
+    start_time = PAIR_START_TIME.get(pair_number)
+    end_time = PAIR_END_TIME.get(pair_number)
+
+    if not start_time or not end_time:
+        raise ValueError("Pair number must be between 1 and 8")
+
+    return start_time, end_time
+
+
+def get_weekday_name(date: datetime.date) -> str:
+    """Returns weekday name for some date"""
+    weekdays = {
+        0: "Понеділок",
+        1: "Вівторок",
+        2: "Середа",
+        3: "Четвер",
+        4: "П'ятниця",
+        5: "Субота",
+        6: "Неділя",
+    }
+
+    return weekdays.get(date.weekday(), "Невідомий день")
