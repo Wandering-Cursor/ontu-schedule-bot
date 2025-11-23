@@ -94,7 +94,7 @@ class Teacher(Schema):
 
 class ScheduleTeacherInfo(Schema):
     """
-    This class is used in palces that can only get
+    This class is used in places that can only get
     teacher information from Schedule API.
 
     They don't have ID/Department information =>

@@ -9,7 +9,7 @@ import re
 
 def current_time_in_kiev() -> datetime.datetime:
     """Returns current time in Kiev timezone"""
-    kiev_tz = pytz.timezone("Europe/Kiev")
+    kiev_tz = pytz.timezone("Europe/Kyiv")
     return datetime.datetime.now(tz=kiev_tz)
 
 
@@ -87,14 +87,21 @@ def split_message(text: str, max_length: int = 4096) -> list[str]:
         # Find all closing tags
         closing_tags = re.findall(r"</([^>\s]+)>", text_chunk)
 
-        # Track which tags are still open
-        open_tags = []
+        # Count occurrences of each tag type
+        tag_counts = {}
         for tag in opening_tags:
-            open_tags.append(tag)
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
         for tag in closing_tags:
-            if tag in open_tags:
-                open_tags.remove(tag)
+            if tag in tag_counts:
+                tag_counts[tag] -= 1
+                if tag_counts[tag] == 0:
+                    del tag_counts[tag]
+
+        # Return tags that still have open occurrences
+        open_tags = []
+        for tag, count in tag_counts.items():
+            open_tags.extend([tag] * count)
 
         return open_tags
 

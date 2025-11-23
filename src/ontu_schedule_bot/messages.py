@@ -674,7 +674,7 @@ async def send_no_classes_message(
     date: datetime.date,
 ) -> None:
     """Sends a message indicating no classes are scheduled for the given date."""
-    text = f"На {date.strftime('%d.%m.%Y')} занять не знайдено."
+    text = f"Не знайдено жодних занять на {date.strftime('%d.%m.%Y')}."
 
     await edit_or_reply(
         update=update,

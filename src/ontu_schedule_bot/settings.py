@@ -5,11 +5,17 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    BOT_TOKEN: str
+    BOT_TOKEN: pydantic.SecretStr = pydantic.Field(
+        min_length=1,
+    )
 
     API_URL: pydantic.HttpUrl
-    API_USERNAME: str
-    API_PASSWORD: pydantic.SecretStr
+    API_USERNAME: str = pydantic.Field(
+        min_length=1,
+    )
+    API_PASSWORD: pydantic.SecretStr = pydantic.Field(
+        min_length=1,
+    )
 
     DEBUG_CHAT_ID: int
 

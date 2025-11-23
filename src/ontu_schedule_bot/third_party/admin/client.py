@@ -155,23 +155,22 @@ class AdminClient:
             url="/chat/bulk/schedule",
         ) as response:
             for chunk in response.iter_bytes():
-                if chunk[:2] == b",\n":
+                if chunk.startswith(b",\n"):
                     chunk = chunk[2:]
-                if chunk[-1] == b",":
+                if chunk.endswith(b","):
                     chunk = chunk[:-1]
 
-                if chunk.find(b']},\n{"'):
+                if chunk.find(b']},\n{"') != -1:
                     chunk = b"[" + chunk + b"]"
 
-                if chunk[-2:] == b"]]":
+                if chunk.endswith(b"]]"):
                     chunk = chunk[:-1]
 
                 try:
                     data = json.loads(chunk)
                 except json.JSONDecodeError as e:
-                    logger.warning("Failed to decode chunk: %s", e)
+                    logger.warning("Failed to decode chunk: %s; chunk: %r", e, chunk)
                     continue
-
                 if not isinstance(data, list):
                     data: list[dict] = [data]
 
