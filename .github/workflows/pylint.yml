@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         curl -sSL https://pdm-project.org/install-pdm.py | python3 -
-        pdm install --no-lock
-    - name: Linting code with Pylint
+        pdm sync
+    - name: Check code with Ruff
       run: |
-        pdm run lint
+        pdm run ruff check . && pdm run ruff format --check

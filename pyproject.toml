@@ -1,34 +1,23 @@
 [project]
 name = "ontu-schedule-bot"
-version = "1.0.2"
+version = "1.0.3"
 description = "ONTU Schedule Telegram Bot"
 authors = [
     {name = "Pavlo Pohorieltsev", email = "49622129+makisukurisu@users.noreply.github.com"},
 ]
 dependencies = [
-    "python-telegram-bot==21.11.1",
-    "python-telegram-bot[job-queue]",
-    "python-telegram-bot[callback-data]",
-    "requests==2.32.3",
-    "python-decouple==3.8",
+    "python-telegram-bot[callback-data,rate-limiter,job-queue]>=22.5,<23.0",
+    "httpx>=0.28.1,<0.29.0",
+    "pydantic-settings>=2.11.0",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 readme = "README.md"
 license = {text = "MIT"}
 
 
 [project.optional-dependencies]
 dev = [
-    "pylint>=3.2.5",
-    "isort>=5.13.2",
-    "black>=24.4.2",
+    "ruff>=0.14.0",
 ]
 [tool.pdm]
 distribution = false
-
-[tool.pdm.scripts]
-_isort="isort src/"
-_black="black src/"
-_pylint="pylint src/"
-lint={ composite=["_isort", "_black", "_pylint"], keep_going=true }
-bot="python src/bot.py"

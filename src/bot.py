@@ -11,11 +11,12 @@ from telegram.ext import (
     CommandHandler,
     JobQueue,
     PicklePersistence,
+    AIORateLimiter,
 )
 
 from ontu_schedule_bot import commands, patterns
-from ontu_schedule_bot.enums import notification_times
-from ontu_schedule_bot.secret_config import API_TOKEN
+from ontu_schedule_bot.settings import settings
+from ontu_schedule_bot.utils import PAIR_START_TIME
 
 os.makedirs("logs", exist_ok=True)
 
@@ -41,11 +42,20 @@ def main() -> None:
 
     application = (
         Application.builder()
-        .token(API_TOKEN)
+        .token(settings.BOT_TOKEN)
         .persistence(persistence)
         .arbitrary_callback_data(True)
         .concurrent_updates(True)
+        .rate_limiter(
+            AIORateLimiter(
+                max_retries=5,
+            )
+        )
         .build()
+    )
+
+    application.add_error_handler(
+        commands.error_handler,
     )
 
     application.add_handler(
@@ -56,106 +66,127 @@ def main() -> None:
     )
     application.add_handler(
         CallbackQueryHandler(
-            callback=commands.faculty_select,
-            pattern=patterns.set_group_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.group_select,
-            pattern=patterns.pick_faculty_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.group_set,
-            pattern=patterns.pick_group_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
             callback=commands.start_command,
             pattern=patterns.start_pattern,
         )
     )
+
     application.add_handler(
         CallbackQueryHandler(
-            callback=commands.get_schedule,
-            pattern=patterns.get_schedule,
+            callback=commands.manage_subscription,
+            pattern=patterns.manage_subscription_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.manage_subscription_groups,
+            pattern=patterns.manage_subscription_groups_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.manage_subscription_teachers,
+            pattern=patterns.manage_subscription_teachers_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.add_subscription_group,
+            pattern=patterns.add_subscription_group_pattern,
         )
     )
     application.add_handler(
         CallbackQueryHandler(
-            callback=commands.get_day_details,
-            pattern=patterns.day_details_pattern,
+            callback=commands.add_subscription_teacher,
+            pattern=patterns.add_subscription_teacher_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.select_faculty,
+            pattern=patterns.select_faculty_pattern,
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.select_department,
+            pattern=patterns.select_department_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.add_subscription_item,
+            pattern=patterns.add_subscription_item_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.remove_subscription_items,
+            pattern=patterns.remove_subscription_items_pattern,
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.remove_subscription_item,
+            pattern=patterns.remove_subscription_item_pattern,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            command="today",
+            callback=commands.get_today_schedule,
+        )
+    )
+    application.add_handler(
+        CommandHandler(
+            command="tomorrow",
+            callback=commands.get_tomorrow_schedule,
+        )
+    )
+    application.add_handler(
+        CommandHandler(
+            command="week",
+            callback=commands.get_week_schedule,
+        )
+    )
+    application.add_handler(
+        CommandHandler(
+            "next_pair",
+            commands.next_pair,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.get_schedule,
+            pattern=patterns.get_schedule_pattern,
         )
     )
     application.add_handler(
         CallbackQueryHandler(
             callback=commands.get_pair_details,
-            pattern=patterns.pair_details_pattern,
+            pattern=patterns.get_pair_details_pattern,
         )
     )
+
     application.add_handler(
         CallbackQueryHandler(
             callback=commands.toggle_subscription,
             pattern=patterns.toggle_subscription_pattern,
         )
     )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.update_cache,
-            pattern=patterns.update_cache_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.start_for_teachers,
-            pattern=patterns.start_for_teachers_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.department_select,
-            pattern=patterns.set_teacher,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.teacher_set,
-            pattern=patterns.pick_department,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.teacher_select,
-            pattern=patterns.pick_teacher,
-        )
-    )
 
     application.add_handler(
         CommandHandler(
-            command="next_pair",
-            callback=commands.pair_check_per_chat,
-        )
-    )
-    application.add_handler(
-        CommandHandler(
-            command="schedule",
-            callback=commands.get_schedule,
-        )
-    )
-    application.add_handler(
-        CommandHandler(
-            command="today",
-            callback=commands.get_today,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            command="update_notbot",
-            callback=commands.update_notbot,
+            command="manual_batch_pair_check",
+            callback=commands.manual_batch_pair_check,
         )
     )
 
@@ -166,21 +197,23 @@ def main() -> None:
         )
     )
 
-    application.add_handler(
-        CommandHandler(
-            command="batch_pair_check",
-            callback=commands.batch_pair_check_handler,
-        )
-    )
-
     if not isinstance(application.job_queue, JobQueue):
         logger.error("Application doesn't have job_queue")
         return
 
-    for time_kwargs in notification_times:
+    for _pair, start_time in PAIR_START_TIME.items():
+        # Convert time to datetime, subtract 10 minutes, then back to time
+        temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)
+        temp_datetime -= datetime.timedelta(minutes=10)
+        adjusted_time = temp_datetime.time()
+
         application.job_queue.run_daily(
             commands.batch_pair_check,
-            time=datetime.time(tzinfo=pytz.timezone("Europe/Kiev"), **time_kwargs),
+            time=datetime.time(
+                hour=adjusted_time.hour,
+                minute=adjusted_time.minute,
+                tzinfo=pytz.timezone("Europe/Kyiv"),
+            ),
             days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
             job_kwargs={
                 "misfire_grace_time": None,

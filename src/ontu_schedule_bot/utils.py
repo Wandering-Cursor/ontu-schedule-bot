@@ -1,427 +1,168 @@
 """This is a utils module, it contains Requests and pagination for bot"""
 
-import logging
-import math
-from urllib.parse import urljoin
-
-import requests
-import telegram
-
-from ontu_schedule_bot import classes
-from ontu_schedule_bot.enums import Endpoints, Statuses
-from ontu_schedule_bot.secret_config import API_URL
-
-
-# region Requests
-class BaseRequester:
-    """Defines url for requests and method of request"""
-
-    _url: str = API_URL
-    _method: str = "POST"
-
-    session = requests.Session()
-
-    def check_response(self, response: requests.Response):
-        """
-        Method that checks response
-        If we get non 20* response - raises ValueError
-        """
-        if 200 < response.status_code < 300:
-            raise ValueError(
-                f"Received non OK response ({response.status_code})",
-                response,
-                response.content,
-            )
-        return response
-
-    def make_request(self, endpoint: str, timeout: float = 15.0, **kwargs):
-        """
-        Method for making and getting requests;
-
-        Timeout is specified in seconds. Default is 15.0 seconds;
-        """
-        method: str = kwargs.pop("method", "") or self._method
-        if not isinstance(
-            method,
-            (
-                str,
-                bytes,
-            ),
-        ):
-            raise ValueError("Please don't override method with non str/bytes")
-
-        url = urljoin(self._url, endpoint)
-
-        response = self.session.request(
-            url=url,
-            method=method,
-            data=kwargs.pop("data", None),
-            json=kwargs.pop("json", None),
-            timeout=timeout,
-            **kwargs,
-        )
-
-        return self.check_response(response=response)
-
-
-class Getter(BaseRequester):
-    """Class that handles getting and sending messages to admin server"""
-
-    def get_chat(self, message_instance: telegram.Message) -> classes.Chat | None:
-        """Method to get information about a user"""
-        params = {"chat_id": message_instance.chat_id, "topic_id": None}
-        if message_instance.is_topic_message:
-            params["topic_id"] = message_instance.message_thread_id
-
-        response = self.make_request(
-            endpoint=Endpoints.CHAT_INFO.value,
-            json=params,
-        )
-
-        answer = response.json()
-        if not answer:
-            return None
-        return classes.Chat.from_json(json_dict=answer)
-
-    def get_faculties(self) -> list[classes.Faculty]:
-        """Method to get a list of faculties"""
-        response = self.make_request(
-            endpoint=Endpoints.FACULTIES_GET.value,
-        )
-
-        answer: list[dict] = response.json()
-        faculties: list[classes.Faculty] = []
-        for faculty in answer:
-            faculties.append(classes.Faculty.from_json(faculty))
-        return faculties
-
-    def get_groups(self, faculty_name: str) -> list[classes.Group]:
-        """This method returns a list of group from faculty name"""
-        response = self.make_request(
-            endpoint=Endpoints.GROUPS_GET.value,
-            json={
-                "faculty_name": faculty_name,
-            },
-        )
-
-        answer: list[dict] = response.json()
-        groups: list[classes.Group] = []
-        for group in answer:
-            groups.append(classes.Group.from_json(group))
-        return groups
-
-    def get_all_chats(self) -> list[classes.Chat]:
-        """This method returns all Telegram Chats with data about them"""
-        response = self.make_request(
-            endpoint=Endpoints.CHATS_ALL.value,
-        )
-
-        answer: list[dict] = response.json()
-        chat_list: list[classes.Chat] = []
-        for group in answer:
-            chat_list.append(classes.Chat.from_json(group))
-        return chat_list
-
-    def get_students_schedule(self, group: classes.Group) -> classes.Schedule:
-        """This method gets schedule for some specific group (schedule)"""
-        response = self.make_request(
-            endpoint=Endpoints.SCHEDULE_GET.value,
-            json={"group": group.name, "faculty": group.faculty.name},
-        )
-
-        answer: dict = response.json()
-        return classes.Schedule.from_json(answer)
-
-    def get_teachers_schedule(
-        self, teacher: classes.TeacherForSchedule
-    ) -> classes.Schedule:
-        """This method gets schedule for some specific teacher (schedule)"""
-        response = self.make_request(
-            endpoint=Endpoints.TEACHERS_SCHEDULE.value,
-            json={"teacher": teacher.external_id},
-        )
-
-        answer: dict = response.json()
-        return classes.Schedule.from_json(answer)
-
-    def get_schedule(self, subscription: classes.Subscription) -> classes.Schedule:
-        """This method returns schedule from subscription"""
-        if subscription.group:
-            return self.get_students_schedule(group=subscription.group)
-        if subscription.teacher:
-            return self.get_teachers_schedule(teacher=subscription.teacher)
-        raise ValueError("Subscription must have either group or teacher")
-
-    def update_notbot(
-        self,
-    ) -> bool:
-        """Updates notbot on server side
-
-        Returns:
-            bool: Was notbot cookie updated. True - yes, False - no
-        """
-        try:
-            self.make_request(
-                endpoint=Endpoints.NOTBOT_GET.value,
-                method="GET",
-                timeout=150,  # Timeout in 2.5 minutes;
-            )
-            return True
-        except (
-            ValueError,
-            requests.exceptions.RequestException,
-            ConnectionError,
-        ) as exception:
-            logging.exception(
-                "Exception occurred when updating notbot.\n%s",
-                exception,
-            )
-            return False
-
-    def reset_cache(self, group: classes.Group) -> bool:
-        """Resets schedule cache for specified group"""
-        response = self.make_request(
-            endpoint=Endpoints.CACHE_RESET.value,
-            json={
-                "group": group.name,
-                "faculty": group.faculty.name,
-            },
-        )
-
-        answer: dict = response.json()
-        return answer.get("count", 0) >= 0
-
-    def get_batch_schedule(
-        self,
-    ) -> list[dict[str, classes.Schedule | str | list[int]]]:
-        """This method gets schedule for all groups"""
-        response = self.make_request(
-            endpoint=Endpoints.SCHEDULE_BATCH_GET.value,
-            method="GET",
-            # Timeout in 5 minutes; Should be enough for real life cases.
-            timeout=300.0,
-        )
-
-        answer: list[dict] = response.json()
-        result = []
-        for group in answer:
-            result.append(
-                {
-                    "chat_info": group["chat_info"],
-                    "schedule": classes.Schedule.from_json(group["schedule"]),
-                }
-            )
-        return result
-
-    def get_list_of_departments(self) -> list[classes.Department]:
-        """Returns a list of departments"""
-        response = self.make_request(
-            endpoint=Endpoints.DEPARTMENTS_GET.value, method="GET"
-        )
-
-        answer: list[dict] = response.json()
-
-        result: list[classes.Department] = []
-        for department in answer:
-            result.append(classes.Department.from_json(department))
-
-        return result
-
-    def get_teachers_by_department(
-        self, department: classes.Department
-    ) -> list[classes.TeacherForSchedule]:
-        """Returns a list of teachers for some department"""
-        response = self.make_request(
-            endpoint=Endpoints.DEPARTMENT_GET.value,
-            method="GET",
-            params={"department": department.external_id},
-        )
-
-        answer: list[dict] = response.json()
-
-        result: list[classes.TeacherForSchedule] = []
-        for teacher in answer:
-            result.append(
-                classes.TeacherForSchedule.from_json(
-                    teacher,
-                    fetch_department=False,
-                )
-            )
-
-        return result
-
-    def get_message_campaign(self, campaign_id: str) -> classes.MessageCampaign | None:
-        """Returns a Message Campaign from server, if it exists"""
-        try:
-            response = self.make_request(
-                endpoint=Endpoints.MESSAGE_CAMPAIGN_GET.value,
-                method="GET",
-                params={"campaign_id": campaign_id},
-            )
-        except ValueError as e:
-            logging.warning("Could not find a campaign\n%s", e)
-            return None
-
-        answer: dict = response.json()
-
-        return classes.MessageCampaign.from_json(answer)
-
-
-class Setter(BaseRequester):
-    """A class for updating/writing data to"""
-
-    def new_chat(self, message: telegram.Message) -> classes.Chat | dict | None:
-        """Creates a new chat, returns response from server"""
-        response = self.make_request(
-            endpoint=Endpoints.CHAT_CREATE.value,
-            json={
-                "chat_id": message.chat.id,
-                "chat_name": message.chat.effective_name,
-                "chat_info": message.to_json(),
-                "is_forum": message.chat.is_forum or False,
-                "thread_id": message.message_thread_id,
-            },
-        )
-        answer: dict = response.json()
-        if answer.pop("status", "") == Statuses.OK.value:
-            return Getter().get_chat(message)
-        return answer
-
-    def set_chat_group(
-        self,
-        message: telegram.Message,
-        group: classes.Group,
-        is_active: bool = True,
-    ) -> classes.Subscription | dict:
-        """Updates subscription info for chat"""
-        topic_id = message.message_thread_id if message.is_topic_message else None
-        response = self.make_request(
-            endpoint=Endpoints.CHAT_UPDATE.value,
-            json={
-                "chat_id": message.chat.id,
-                "topic_id": topic_id,
-                "group": {"name": group.name, "faculty": group.faculty.name},
-                "is_active": is_active,
-            },
-        )
-
-        answer: dict = response.json()
-        if answer.pop("status", "") == Statuses.OK.value:
-            return classes.Subscription.from_json(answer)
-        return answer
-
-    def set_chat_teacher(
-        self,
-        message: telegram.Message,
-        teacher: classes.TeacherForSchedule,
-        is_active: bool = True,
-    ):
-        """Updates subscription info for chat"""
-        topic_id = message.message_thread_id if message.is_topic_message else None
-        response = self.make_request(
-            endpoint=Endpoints.CHAT_UPDATE.value,
-            json={
-                "chat_id": message.chat.id,
-                "topic_id": topic_id,
-                "teacher": {
-                    "external_id": teacher.external_id,
-                },
-                "is_active": is_active,
-            },
-        )
-
-        answer: dict = response.json()
-        if answer.pop("status", "") == Statuses.OK.value:
-            return classes.Subscription.from_json(answer)
-        return answer
-
-
-# endregion
-
-
-# region Pagination
-PAGE_SIZE = 10
-
-
-def get_number_of_pages(list_of_elements: list[object]) -> int:
-    """Get's number of pages from some list"""
-    return math.ceil(len(list_of_elements) / PAGE_SIZE)
-
-
-def get_current_page(list_of_elements: list[object], page: int = 0):
-    """Returns current part of list divided on pages"""
-    if len(list_of_elements) <= PAGE_SIZE:
-        return list_of_elements
-
-    return list_of_elements[page * PAGE_SIZE : (page + 1) * PAGE_SIZE]
-
-
-# endregion
-
-
-# region Common
-
-
-def get_chat_from_message(message: telegram.Message):
-    """A method to get a chat by message"""
-    chat = Getter().get_chat(message)
-    if not chat:
-        raise ValueError("Будь-ласка - почніть з початку: /start")
-    return chat
-
-
-def split_string(string: str, max_len: int = 4096) -> list[str]:
-    """Split into an array of string with size no more than specified"""
-    # From https://stackoverflow.com/a/13673133
-    string_size = len(string)
-    return [string[i : i + max_len] for i in range(0, string_size, max_len)]
-
-
-def send_message_to_telegram(
-    bot_token: str,
-    chat_id: int | str,
-    topic_id: int | None,
-    text: str,
-    parse_mode: str | None = "HTML",
-) -> bool:
-    """Util method to send message via Telegram Bot
+import datetime
+
+import pytz
+
+import re
+
+
+def current_time_in_kiev() -> datetime.datetime:
+    """Returns current time in Kiev timezone"""
+    kiev_tz = pytz.timezone("Europe/Kyiv")
+    return datetime.datetime.now(tz=kiev_tz)
+
+
+PAIR_START_TIME = {
+    1: datetime.time(hour=8, minute=0),
+    2: datetime.time(hour=9, minute=30),
+    3: datetime.time(hour=11, minute=30),
+    4: datetime.time(hour=13, minute=0),
+    5: datetime.time(hour=14, minute=30),
+    6: datetime.time(hour=16, minute=0),
+    7: datetime.time(hour=17, minute=30),
+    8: datetime.time(hour=19, minute=10),
+}
+PAIR_END_TIME = {
+    1: datetime.time(hour=9, minute=20),
+    2: datetime.time(hour=10, minute=50),
+    3: datetime.time(hour=12, minute=50),
+    4: datetime.time(hour=14, minute=20),
+    5: datetime.time(hour=15, minute=50),
+    6: datetime.time(hour=17, minute=20),
+    7: datetime.time(hour=18, minute=50),
+    8: datetime.time(hour=20, minute=30),
+}
+
+
+def get_pair_time_bounds(pair_number: int) -> tuple[datetime.time, datetime.time]:
+    """Returns start and end time of some pair by its number"""
+    start_time = PAIR_START_TIME.get(pair_number)
+    end_time = PAIR_END_TIME.get(pair_number)
+
+    if not start_time or not end_time:
+        raise ValueError("Pair number must be between 1 and 8")
+
+    return start_time, end_time
+
+
+def get_weekday_name(date: datetime.date) -> str:
+    """Returns weekday name for some date"""
+    weekdays = {
+        0: "Понеділок",
+        1: "Вівторок",
+        2: "Середа",
+        3: "Четвер",
+        4: "П'ятниця",
+        5: "Субота",
+        6: "Неділя",
+    }
+
+    return weekdays.get(date.weekday(), "Невідомий день")
+
+
+def split_message(text: str, max_length: int = 4096) -> list[str]:
+    """
+    Split a message into chunks no longer than max_length characters.
+    Tries to split on sentence boundaries, line breaks, or word boundaries when possible.
+    Preserves HTML tags when splitting by closing broken tags and reopening them in the next chunk.
 
     Args:
-        bot_token (str): API token of some bot
-        chat_id (int): ID of chat to send a message to
-        text (str): Text of the message (Currently no support for additional stuff)
+        text (str): The text to split
+        max_length (int): Maximum length of each chunk (default: 4096)
 
     Returns:
-        bool: Wether message was sent, or not. True if sent, False if error occurred
+        list[str]: List of text chunks
     """
-    api_endpoint = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    data = {
-        "chat_id": chat_id,
-        "text": text,
-    }
-    if parse_mode:
-        data["parse_mode"] = parse_mode
-    if topic_id:
-        data["message_thread_id"] = topic_id
-    try:
-        response = requests.get(
-            url=api_endpoint,
-            data=data,
-            timeout=5,
-        )
+    if len(text) <= max_length:
+        return [text]
 
-        if response.status_code != 200:
-            raise ValueError("Got non 200 response", response)
+    chunks = []
+    remaining = text
 
-        # We've sent the message
-        return True
-    except (
-        requests.exceptions.RequestException,
-        ConnectionError,
-        ValueError,
-    ) as exception:
-        logging.exception("Could not send message\nException: %s", exception)
-        return False
+    def find_open_tags(text_chunk: str) -> list[str]:
+        """Find unclosed HTML tags in the text chunk"""
+        # Find all opening tags
+        opening_tags = re.findall(r"<([^/\s>]+)[^>]*>", text_chunk)
+        # Find all closing tags
+        closing_tags = re.findall(r"</([^>\s]+)>", text_chunk)
 
+        # Count occurrences of each tag type
+        tag_counts = {}
+        for tag in opening_tags:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
-# endregion
+        for tag in closing_tags:
+            if tag in tag_counts:
+                tag_counts[tag] -= 1
+                if tag_counts[tag] == 0:
+                    del tag_counts[tag]
+
+        # Return tags that still have open occurrences
+        open_tags = []
+        for tag, count in tag_counts.items():
+            open_tags.extend([tag] * count)
+
+        return open_tags
+
+    while len(remaining) > max_length:
+        # Find the best split point within max_length
+        split_point = max_length
+
+        # Look for sentence endings (. ! ?) followed by space or newline
+        for i in range(max_length - 1, max_length // 2, -1):
+            if (
+                remaining[i] in ".!?"
+                and i + 1 < len(remaining)
+                and remaining[i + 1] in " \n"
+            ):
+                split_point = i + 1
+                break
+
+        # If no sentence boundary found, look for line breaks
+        if split_point == max_length:
+            for i in range(max_length - 1, max_length // 2, -1):
+                if remaining[i] == "\n":
+                    split_point = i + 1
+                    break
+
+        # If no line break found, look for word boundaries
+        if split_point == max_length:
+            for i in range(max_length - 1, max_length // 2, -1):
+                if remaining[i] == " ":
+                    split_point = i + 1
+                    break
+
+        # If no good split point found, check for HTML tag boundaries
+        if split_point == max_length:
+            for i in range(max_length - 1, max_length // 2, -1):
+                if remaining[i] == ">":
+                    split_point = i + 1
+                    break
+
+        # Extract the chunk
+        chunk = remaining[:split_point].rstrip()
+
+        # Find open tags that need to be closed
+        open_tags = find_open_tags(chunk)
+
+        # Close any open tags at the end of this chunk
+        if open_tags:
+            for tag in reversed(open_tags):
+                chunk += f"</{tag}>"
+
+        chunks.append(chunk)
+
+        # Prepare the next chunk by reopening the tags
+        next_chunk_start = ""
+        if open_tags:
+            for tag in open_tags:
+                next_chunk_start += f"<{tag}>"
+
+        remaining = next_chunk_start + remaining[split_point:].lstrip()
+
+    # Add the last chunk if there's remaining text
+    if remaining:
+        chunks.append(remaining)
+
+    return chunks
