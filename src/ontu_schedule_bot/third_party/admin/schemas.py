@@ -1,12 +1,15 @@
 import datetime
+from typing import TypeVar
 import pydantic
 
 from ontu_schedule_bot.third_party.admin.enums import Platform
+
 
 class Schema(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(
         from_attributes=True,
     )
+
 
 class Chat(Schema):
     uuid: pydantic.UUID4
@@ -53,10 +56,12 @@ class CreateChatRequest(Schema):
         description="Additional information about the chat.",
     )
 
+
 class Faculty(Schema):
     uuid: pydantic.UUID4
 
     short_name: str
+
 
 class Group(Schema):
     uuid: pydantic.UUID4
@@ -64,11 +69,16 @@ class Group(Schema):
     short_name: str
     faculty: Faculty
 
+    def as_string(self) -> str:
+        return f"{self.short_name} ({self.faculty.short_name})"
+
+
 class Department(Schema):
     uuid: pydantic.UUID4
 
     short_name: str
     full_name: str
+
 
 class Teacher(Schema):
     uuid: pydantic.UUID4
@@ -77,6 +87,10 @@ class Teacher(Schema):
     full_name: str
 
     departments: list[Department]
+
+    def as_string(self) -> str:
+        return f"{self.full_name}"
+
 
 class ScheduleTeacherInfo(Schema):
     """
@@ -89,7 +103,6 @@ class ScheduleTeacherInfo(Schema):
 
     short_name: str
     full_name: str
-
 
 
 class TeacherInfo(Schema):
@@ -106,7 +119,6 @@ class Subscription(Schema):
 
     groups: list[Group]
     teachers: list[Teacher]
-
 
 
 class Lesson(Schema):
@@ -143,3 +155,89 @@ class DaySchedule(Schema):
 
 class WeekSchedule(Schema):
     days: list[DaySchedule]
+
+
+T = TypeVar("T", bound=Schema)
+
+
+class PageNumberPaginationInput(Schema):
+    page: int = pydantic.Field(1, ge=1)
+    page_size: int | None = pydantic.Field(None, ge=1)
+
+
+class PaginatedRequest(PageNumberPaginationInput):
+    pass
+
+
+class Meta(Schema):
+    total: int
+    page: int
+    page_size: int
+
+    has_next: bool = False
+    has_previous: bool = False
+
+    @property
+    def total_pages(self) -> int:
+        if self.page_size is None or self.page_size == 0:
+            return 1
+
+        return (self.total + self.page_size - 1) // self.page_size
+
+
+class PaginatedResponse[T](Schema):
+    meta: Meta
+    items: list[T]
+
+
+class FacultyPaginatedRequest(PaginatedRequest):
+    name: str | None = pydantic.Field(
+        default=None,
+        description="Filter faculties by name (partial match).",
+    )
+
+
+class FacultyPaginatedResponse(PaginatedResponse[Faculty]):
+    pass
+
+
+class GroupPaginatedRequest(PaginatedRequest):
+    faculty_id: pydantic.UUID4 | None = pydantic.Field(
+        default=None,
+        description="Filter groups by faculty ID.",
+    )
+    name: str | None = pydantic.Field(
+        default=None,
+        description="Filter groups by name (partial match).",
+    )
+
+
+class GroupPaginatedResponse(PaginatedResponse[Group]):
+    pass
+
+
+class DepartmentPaginatedRequest(PaginatedRequest):
+    name: str | None = pydantic.Field(
+        default=None,
+        description="Filter departments by name (partial match).",
+    )
+
+
+class DepartmentPaginatedResponse(PaginatedResponse[Department]):
+    pass
+
+
+class TeacherPaginatedRequest(PaginatedRequest):
+    department_id: pydantic.UUID4 | None = pydantic.Field(
+        default=None,
+        description="Filter teachers by department ID.",
+    )
+
+    name: str | None = pydantic.Field(
+        default=None,
+        description="Filter teachers by name (partial match).",
+    )
+
+
+class TeacherPaginatedResponse(PaginatedResponse[Teacher]):
+    pass

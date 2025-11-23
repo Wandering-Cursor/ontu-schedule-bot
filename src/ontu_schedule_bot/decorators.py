@@ -94,7 +94,7 @@ def reply_with_exception(func: Callable):
                 texts = split_string(f"Exception in {func=}\n{traceback.format_exc()}")
                 for text in texts:
                     send_message_to_telegram(
-                        bot_token=settings.API_TOKEN,
+                        bot_token=settings.BOT_TOKEN,
                         chat_id=settings.DEBUG_CHAT_ID,
                         topic_id=None,
                         text=text,

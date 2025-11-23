@@ -1,7 +1,9 @@
 """This module contains all the commands bot may execute"""
 
+import contextvars
 import logging
 import time
+from typing import Literal
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.constants import ChatType, ParseMode
@@ -12,7 +14,55 @@ from ontu_schedule_bot import classes, decorators, enums, utils
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
 from ontu_schedule_bot.third_party.admin.enums import Platform
-from ontu_schedule_bot.third_party.admin.schemas import CreateChatRequest
+from ontu_schedule_bot.third_party.admin.schemas import (
+    Chat,
+    CreateChatRequest,
+    Department,
+    Faculty,
+    Group,
+    Subscription,
+    Teacher,
+)
+from ontu_schedule_bot import messages
+
+
+current_client = contextvars.ContextVar("current_client")
+
+
+def get_current_client() -> AdminClient:
+    """Gets current admin client from contextvar"""
+    try:
+        client = current_client.get()
+    except LookupError:
+        client = AdminClient()
+        current_client.set(client)
+    return client
+
+
+async def get_chat_info(
+    update: Update,
+) -> Chat:
+    """Gets chat info from admin service"""
+    telegram_chat = update.effective_chat
+    if not telegram_chat:
+        raise RuntimeError("No chat in update")
+
+    client = get_current_client()
+
+    return client.get_chat(chat_id=str(telegram_chat.id))
+
+
+async def get_subscription_info(
+    chat: Chat,
+) -> Subscription:
+    """Gets subscription info from admin service"""
+    client = get_current_client()
+
+    return client.get_subscription(chat_id=chat.platform_chat_id)
+
+
+# TODO: Deprecate `reply_with_exception` decorator
+# Use error handling provided by telegram.ext.Application instead
 
 
 @decorators.reply_with_exception
@@ -24,10 +74,11 @@ async def start_command(
     """Executed when user initiates conversation, or returns to main menu"""
     telegram_chat = update.effective_chat
     message = update.effective_message
+
     if not telegram_chat or not message:
         return
 
-    await telegram_chat.send_chat_action(action="typing")
+    await messages.processing_update(update=update)
 
     client = AdminClient()
 
@@ -39,358 +90,295 @@ async def start_command(
             username=telegram_chat.username or None,
             first_name=telegram_chat.first_name or None,
             last_name=telegram_chat.last_name or None,
-            language_code=update.effective_user.language_code if update.effective_user else None,
+            language_code=update.effective_user.language_code
+            if update.effective_user
+            else None,
             additional_info={
                 "type": telegram_chat.type,
                 "is_forum": telegram_chat.is_forum,
                 "topic_id": message.message_thread_id,
-            }
+            },
         )
     )
 
     subscription = client.get_subscription(chat_id=chat.platform_chat_id)
 
-    show_teacher = all(
-        [
-            subscription,
-            getattr(subscription, "teacher", False),
-            "force" not in str(getattr(update.callback_query, "data", "")),
-        ]
-    )
-    if show_teacher:
-        return
-
-    subscription_text = "Ви не підписані на розклад"
-    keyboard = []
-    if subscription.groups or subscription.teachers:
-        keyboard.append(
-            [
-                InlineKeyboardButton("Оновити підписку", callback_data=("set_group",)),
-            ]
-        )
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    text=(
-                        "Отримувати повідомлення перед парою? "
-                        f"{'✅' if subscription.is_active else '❌'}"
-                    ),
-                    callback_data=("toggle_subscription", chat),
-                )
-            ]
-        )
-
-        subscription_text = ""
-
-        if subscription.groups:
-            subscription_text += (
-                "Ви підписані на розклад для груп\n"
-            )
-        if subscription.teachers:
-            subscription_text += (
-                "Поки що Ви підписані на розклад для викладачів\n"
-            )
-    else:
-        # Replace with subscription management (add/remove groups/teachers)
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    "Отримувати розклад студента", callback_data=("set_group",)
-                ),
-            ]
-        )
-
-    kwargs = {
-        "text": f"Чим можу допомогти?\n\n{subscription_text}",
-        "reply_markup": InlineKeyboardMarkup(inline_keyboard=keyboard),
-    }
-
-    if base_text is not None:
-        kwargs["text"] = base_text + "\n\n" + kwargs["text"]
-
-    if update.callback_query and update.callback_query.message:
-        await update.callback_query.message.edit_text(**kwargs)
-    elif update.message:
-        await update.message.reply_html(**kwargs)
-
-
-
-@decorators.reply_with_exception
-async def department_select(update: Update, _) -> None:
-    """This command sends a list of departments you can choose"""
-    telegram_chat = update.effective_chat
-    if not telegram_chat:
-        return
-
-    query = update.callback_query
-    if not query or not query.message:
-        return
-
-    await query.answer("Будь-ласка, зачекайте")
-
-    departments = utils.Getter().get_list_of_departments()
-
-    keyboard = []
-    for index, department in enumerate(departments):
-        if index % 4 == 0:
-            keyboard.append([])
-        keyboard[-1].append(
-            InlineKeyboardButton(
-                text=department.name,
-                callback_data=("pick_department", department),
-            )
-        )
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                "Назад ⤴️",
-                callback_data=("start",),
-            )
-        ]
-    )
-
-    kwargs = {
-        "text": "Оберіть кафедру:",
-        "reply_markup": InlineKeyboardMarkup(inline_keyboard=keyboard),
-    }
-
-    await query.message.edit_text(**kwargs)
-
-
-@decorators.reply_with_exception
-async def teacher_set(update: Update, _) -> None:
-    """
-    This command activates a subscription (by selecting a teacher of some department)
-    """
-    telegram_chat = update.effective_chat
-    if not telegram_chat:
-        return
-
-    query = update.callback_query
-    if not query or not query.message:
-        return
-
-    await query.answer("Будь-ласка, зачекайте")
-
-    if not query.data:
-        return
-
-    data: tuple[str, classes.Department] = tuple(query.data)  # type: ignore
-
-    department_index = 1
-    department: classes.Department = data[department_index]
-
-    teachers = utils.Getter().get_teachers_by_department(department=department)
-
-    keyboard = []
-    for index, teacher in enumerate(teachers):
-        if index % 2 == 0:
-            keyboard.append([])
-        keyboard[-1].append(
-            InlineKeyboardButton(
-                text=teacher.short_name,
-                callback_data=("pick_teacher", teacher),
-            )
-        )
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                "Назад ⤴️",
-                callback_data=("set_teacher", department),
-            )
-        ]
-    )
-
-    kwargs = {
-        "text": "Оберіть викладача:",
-        "reply_markup": InlineKeyboardMarkup(inline_keyboard=keyboard),
-    }
-
-    await query.message.edit_text(**kwargs)
-
-
-@decorators.reply_with_exception
-async def teacher_select(update: Update, _) -> None:
-    """Finalize selection of teacher schedule"""
-    telegram_chat = update.effective_chat
-    telegram_message = update.effective_message
-    query = update.callback_query
-
-    if not telegram_chat or not (telegram_message or query):
-        return
-
-    if query:
-        await query.answer("Будь-ласка, зачекайте")
-        telegram_message = query.message
-
-    if not query.data:
-        return
-
-    data: tuple[str, classes.TeacherForSchedule] = tuple(query.data)  # type: ignore
-
-    teacher_index = 1
-    teacher: classes.TeacherForSchedule = data[teacher_index]
-
-    subscription = utils.Setter().set_chat_teacher(
-        message=telegram_message,
-        teacher=teacher,
-        is_active=True,
-    )
-    if isinstance(subscription, dict):
-        raise ValueError(
-            "Instead of subscription - got response from server",
-            subscription,
-        )
-    await start_command(
+    await messages.start_command(
         update=update,
-        context=_,
+        chat=chat,
+        subscription=subscription,
     )
 
 
-@decorators.reply_with_exception
-async def faculty_select(update: Update, _):
-    """This command sends a list of faculties to choose for subscription"""
-    query = update.callback_query
-    if not query or not query.message:
-        return
-    await query.answer()
+async def manage_subscription(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Starts the process of updating the subscription:
+    - Choose wether modifying groups or teachers;
+    - Proceed to choose between adding and removing subscription items;
+    - Finally, choose specific groups/teachers to add/remove.
+    """
+    await messages.processing_update(update=update)
 
-    keyboard = []
+    chat = await get_chat_info(update=update)
 
-    faculties = utils.Getter().get_faculties()
-    for faculty in faculties:
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    faculty.name,
-                    callback_data=("pick_faculty", faculty.name),
-                )
-            ]
-        )
-    keyboard.append([InlineKeyboardButton("Назад ⤴️", callback_data=("start",))])
-
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-    await query.message.edit_text(
-        text="Будь-ласка - оберіть факультет:",
-        reply_markup=reply_markup,
-    )
-
-
-def _back_forward_buttons_get(page: int, query_data: list) -> tuple[tuple, tuple]:
-    """This method encapsulates logics to get forward and backwards buttons"""
-    back_list: list[str | int] = query_data.copy()
-    forward_list: list[str | int] = query_data.copy()
-
-    if len(query_data) > enums.PAGE_INDEX:
-        back_list[2] = page - 1 if page - 1 >= 0 else 0
-        forward_list[2] = page + 1
-    else:
-        back_list.append(page)
-        forward_list.append(page + 1)
-    return tuple(back_list), tuple(forward_list)
-
-
-@decorators.reply_with_exception
-async def group_select(update: Update, _) -> None:
-    """This command sends a list of groups of some faculty to choose for subscription"""
-    query = update.callback_query
-    if not query or not query.message:
-        return
-    await query.answer("Будь-ласка, зачекайте")
-
-    if not query.data:
-        return
-
-    data: tuple[str, str, int] = tuple(query.data)  # type: ignore
-
-    if len(data) < enums.FACULTY_NAME_INDEX + 1:
-        return
-
-    if len(data) < enums.PAGE_INDEX + 1:
-        page: int = 0
-    else:
-        page: int = data[enums.PAGE_INDEX]
-
-    keyboard = []
-
-    groups = utils.Getter().get_groups(faculty_name=data[enums.FACULTY_NAME_INDEX])
-    number_of_pages = utils.get_number_of_pages(groups)  # type: ignore
-    current_page: list[classes.Group] = utils.get_current_page(
-        list_of_elements=groups,  # type: ignore
-        page=page,
-    )  # type: ignore
-    for group in current_page:
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    group.name,
-                    callback_data=("pick_group", group),
-                )
-            ]
-        )
-
-    back_tuple, forward_tuple = _back_forward_buttons_get(
-        page=page,
-        query_data=list(data),
-    )
-
-    keyboard.append(
-        [
-            InlineKeyboardButton("◀️", callback_data=back_tuple),
-            InlineKeyboardButton("Назад ⤴️", callback_data=("set_group",)),
-            InlineKeyboardButton("▶️", callback_data=forward_tuple),
-        ]
-    )
-
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-    await query.message.edit_text(
-        text=f"Тепер - оберіть групу\nСторінка {page + 1}/{number_of_pages}",
-        reply_markup=reply_markup,
-    )
-
-
-@decorators.reply_with_exception
-async def group_set(update: Update, _) -> None:
-    """This command activates a subscription"""
-    telegram_chat = update.effective_chat
-    telegram_message = update.effective_message
-    query = update.callback_query
-
-    if not telegram_chat or not (telegram_message or query):
-        return
-
-    if query:
-        await query.answer()
-        telegram_message = query.message
-
-    if not query.data:
-        return
-
-    data: tuple[str, classes.Group] = tuple(query.data)  # type: ignore
-    group_index = 1
-    group: classes.Group = data[group_index]
-    subscription = utils.Setter().set_chat_group(
-        message=telegram_message,
-        group=group,
-        is_active=update.effective_chat.type != ChatType.PRIVATE,
-    )
-    if isinstance(subscription, dict):
-        raise ValueError(
-            "Instead of subscription - got response from server", subscription
-        )
-
-    if not subscription.group:
-        raise ValueError("Subscription has no group!")
-
-    await start_command(
+    await messages.manage_subscription(
         update=update,
-        context=_,
-        base_text=(
-            "Відтепер ви будете отримувати розклад для групи: "
-            f"{subscription.group.name} факультету {subscription.group.faculty.name}"
-        ),
+        chat=chat,
+    )
+
+
+async def manage_subscription_groups(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Continues the process of updating the subscription by focusing on groups only.
+    """
+    await messages.processing_update(update=update)
+
+    chat = await get_chat_info(update=update)
+
+    subscription = await get_subscription_info(chat=chat)
+
+    await messages.manage_subscription_groups(
+        update=update,
+        chat=chat,
+        subscription=subscription,
+    )
+
+
+async def manage_subscription_teachers(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Continues the process of updating the subscription by focusing on teachers only.
+    """
+    await messages.processing_update(update=update)
+
+    chat = await get_chat_info(update=update)
+
+    subscription = await get_subscription_info(chat=chat)
+
+    await messages.manage_subscription_teachers(
+        update=update,
+        chat=chat,
+        subscription=subscription,
+    )
+
+
+async def remove_subscription_items(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Continues the process of updating the subscription by focusing on removing items.
+    """
+    await messages.processing_update(update=update)
+
+    if not update.callback_query or not update.callback_query.data:
+        raise ValueError("remove_subscription_items is designed for callbacks")
+
+    item_type: Literal["group", "teacher"] = update.callback_query.data[1]  # type: ignore
+
+    chat = await get_chat_info(update=update)
+
+    subscription = await get_subscription_info(chat=chat)
+
+    await messages.remove_subscription_items(
+        update=update,
+        chat=chat,
+        subscription=subscription,
+        item_type=item_type,
+    )
+
+
+async def remove_subscription_item(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Finalizes the process of updating the subscription by removing specific item.
+    """
+    await messages.processing_update(update=update)
+
+    if not update.callback_query or not update.callback_query.data:
+        raise ValueError("remove_subscription_item is designed for callbacks")
+
+    item_type: Literal["group", "teacher"] = update.callback_query.data[1]  # type: ignore
+    item: Teacher | Group = update.callback_query.data[2]  # type: ignore
+
+    chat = await get_chat_info(update=update)
+
+    client = get_current_client()
+
+    if item_type == "group":
+        subscription = client.remove_group(
+            chat_id=chat.platform_chat_id,
+            group_id=item.uuid,
+        )
+    elif item_type == "teacher":
+        subscription = client.remove_teacher(
+            chat_id=chat.platform_chat_id,
+            teacher_id=item.uuid,
+        )
+    else:
+        raise RuntimeError("Unsupported item type")
+
+    await messages.remove_subscription_items(
+        update=update,
+        chat=chat,
+        subscription=subscription,
+        item_type=item_type,
+    )
+
+
+async def add_subscription_group(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Starts the process of adding a group to the subscription.
+
+    First users have to select a faculty, then a group within that faculty.
+    Since there might be quite a lot of groups, pagination is implemented.
+    """
+    await messages.processing_update(update=update)
+
+    chat = await get_chat_info(update=update)
+
+    client = get_current_client()
+
+    faculties = client.read_faculties()
+
+    await messages.add_subscription_group(
+        update=update,
+        chat=chat,
+        faculties=faculties.items,
+    )
+
+
+async def add_subscription_teacher(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Starts the process of adding a teacher to the subscription.
+
+    First users have to select a department, then a teacher within that department.
+    Since there might be quite a lot of teachers, pagination is implemented.
+    """
+    await messages.processing_update(update=update)
+
+    chat = await get_chat_info(update=update)
+
+    client = get_current_client()
+
+    departments = client.read_departments()
+
+    await messages.add_subscription_teacher(
+        update=update,
+        chat=chat,
+        departments=departments.items,
+    )
+
+
+async def select_faculty(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Continues the process of adding a group to the subscription by selecting a faculty.
+    """
+    await messages.processing_update(update=update)
+
+    query = update.callback_query
+    if not query or not query.message or not query.data:
+        return
+
+    faculty: Faculty = query.data[1]  # type: ignore
+    page_number: int = query.data[2]  # type: ignore
+
+    client = get_current_client()
+
+    groups = client.read_groups(
+        faculty_id=faculty.uuid,
+        page=page_number,
+    )
+
+    await messages.select_faculty(
+        update=update,
+        faculty=faculty,
+        groups=groups,
+    )
+
+
+async def select_department(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """
+    Continues the process of adding a teacher to the subscription by selecting a department.
+    """
+    await messages.processing_update(update=update)
+
+    query = update.callback_query
+    if not query or not query.message or not query.data:
+        return
+
+    department: Department = query.data[1]  # type: ignore
+    page_number: int = query.data[2]  # type: ignore
+
+    client = get_current_client()
+
+    teachers = client.read_teachers(
+        department_id=department.uuid,
+        page=page_number,
+    )
+
+    await messages.select_department(
+        update=update,
+        department=department,
+        teachers=teachers,
+    )
+
+
+async def add_subscription_item(
+    update: "Update",
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    await messages.processing_update(update=update)
+
+    query = update.callback_query
+    if not query or not query.message or not query.data:
+        return
+
+    item_type: Literal["group", "teacher"] = query.data[1]  # type: ignore
+    item: Group | Teacher = query.data[2]  # type: ignore
+
+    chat = await get_chat_info(update=update)
+
+    client = get_current_client()
+
+    if item_type == "group":
+        client.add_group(
+            chat_id=chat.platform_chat_id,
+            group_id=item.uuid,
+        )
+    elif item_type == "teacher":
+        client.add_teacher(
+            chat_id=chat.platform_chat_id,
+            teacher_id=item.uuid,
+        )
+    else:
+        raise RuntimeError("Unsupported item type")
+
+    return await messages.manage_subscription(
+        update=update,
+        chat=chat,
     )
 
 
@@ -498,42 +486,6 @@ async def send_week_schedule(
         await message.edit_text(**kwargs)
     else:
         await message.reply_html(**kwargs)
-
-
-@decorators.reply_with_exception
-async def update_cache(update: Update, _):
-    """This method updates cache for current chat"""
-    query = update.callback_query
-    if not query or not query.message:
-        return
-    message = query.message
-    await query.answer(text="Будь-ласка, зачекайте")
-
-    if not query.data:
-        return
-
-    data: tuple[str, classes.Group, Message] = tuple(query.data)  # type: ignore
-    group_index = 1
-
-    group: classes.Group = data[group_index]
-
-    cache_reset = utils.Getter().reset_cache(group=group)
-    if not cache_reset:
-        await message.edit_text(
-            text="Розклад, кеш не вдалося оновити. Спробуйте пізніше (чи /schedule)",
-        )
-        return
-
-    schedule = utils.Getter().get_students_schedule(group=group)
-
-    week_schedule = schedule.get_week_representation()
-
-    await send_week_schedule(
-        message=message,
-        week_schedule=week_schedule,
-        group=group,
-        is_updated=True,
-    )
 
 
 @decorators.reply_with_exception
@@ -810,25 +762,6 @@ async def toggle_subscription(update: Update, _):
     await query.answer(text=f"Ваша підписка тепер {status}", show_alert=True)
 
     await start_command(update=update, context=_)
-
-
-@decorators.reply_with_exception
-async def update_notbot(update: Update, _) -> None:
-    """
-    A method to update notbot with hope to reduce waiting time on average
-    Args:
-        _ (ContextTypes.DEFAULT_TYPE): Context, that's passed when calling for task
-    """
-    if not update.effective_chat:
-        return
-    if update.effective_chat.id != settings.DEBUG_CHAT_ID:
-        return
-
-    logging.info("Updating notbot")
-    utils.Getter().update_notbot()
-    logging.info("Finished updating notbot")
-    if update.message:
-        await update.message.reply_text("Notbot was reset")
 
 
 @decorators.reply_with_exception

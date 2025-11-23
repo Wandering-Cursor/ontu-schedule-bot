@@ -13,3 +13,4 @@ class Settings(BaseSettings):
     DEBUG_CHAT_ID: int
 
 settings = Settings()
+

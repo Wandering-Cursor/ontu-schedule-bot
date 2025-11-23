@@ -1,6 +1,86 @@
 """Defines patterns for callbacks"""
 
 
+def manage_subscription_pattern(callback_data):
+    """Pattern for manage_subscription"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "manage_subscription":
+            return True
+    return False
+
+
+def manage_subscription_groups_pattern(callback_data):
+    """Pattern for manage_subscription_groups"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "manage_groups":
+            return True
+    return False
+
+
+def manage_subscription_teachers_pattern(callback_data):
+    """Pattern for manage_subscription_teachers"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "manage_teachers":
+            return True
+    return False
+
+
+def remove_subscription_items_pattern(callback_data):
+    """Pattern for remove_subscription_items"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "remove_subscription_items":
+            return True
+    return False
+
+
+def remove_subscription_item_pattern(callback_data):
+    """Pattern for remove_subscription_item"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "remove_subscription_item":
+            return True
+    return False
+
+
+def add_subscription_group_pattern(callback_data):
+    """Pattern for add_subscription_group"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "add_subscription_group":
+            return True
+    return False
+
+
+def add_subscription_teacher_pattern(callback_data):
+    """Pattern for add_subscription_teacher"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "add_subscription_teacher":
+            return True
+    return False
+
+
+def select_faculty_pattern(callback_data):
+    """Pattern for select_faculty"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "select_faculty":
+            return True
+    return False
+
+
+def select_department_pattern(callback_data):
+    """Pattern for select_department"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "select_department":
+            return True
+    return False
+
+
+def add_subscription_item_pattern(callback_data):
+    """Pattern for add_subscription_item"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "add_subscription_item":
+            return True
+    return False
+
+
 def set_group_pattern(callback_data):
     """Pattern for set_group"""
     if isinstance(callback_data, tuple):

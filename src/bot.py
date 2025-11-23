@@ -41,7 +41,7 @@ def main() -> None:
 
     application = (
         Application.builder()
-        .token(settings.API_TOKEN)
+        .token(settings.BOT_TOKEN)
         .persistence(persistence)
         .arbitrary_callback_data(True)
         .concurrent_updates(True)
@@ -56,28 +56,78 @@ def main() -> None:
     )
     application.add_handler(
         CallbackQueryHandler(
-            callback=commands.faculty_select,
-            pattern=patterns.set_group_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.group_select,
-            pattern=patterns.pick_faculty_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.group_set,
-            pattern=patterns.pick_group_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
             callback=commands.start_command,
             pattern=patterns.start_pattern,
         )
     )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.manage_subscription,
+            pattern=patterns.manage_subscription_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.manage_subscription_groups,
+            pattern=patterns.manage_subscription_groups_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.manage_subscription_teachers,
+            pattern=patterns.manage_subscription_teachers_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.add_subscription_group,
+            pattern=patterns.add_subscription_group_pattern,
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.add_subscription_teacher,
+            pattern=patterns.add_subscription_teacher_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.select_faculty,
+            pattern=patterns.select_faculty_pattern,
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.select_department,
+            pattern=patterns.select_department_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.add_subscription_item,
+            pattern=patterns.add_subscription_item_pattern,
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.remove_subscription_items,
+            pattern=patterns.remove_subscription_items_pattern,
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.remove_subscription_item,
+            pattern=patterns.remove_subscription_item_pattern,
+        )
+    )
+
     application.add_handler(
         CallbackQueryHandler(
             callback=commands.get_schedule,
@@ -102,36 +152,6 @@ def main() -> None:
             pattern=patterns.toggle_subscription_pattern,
         )
     )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.update_cache,
-            pattern=patterns.update_cache_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.start_for_teachers,
-            pattern=patterns.start_for_teachers_pattern,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.department_select,
-            pattern=patterns.set_teacher,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.teacher_set,
-            pattern=patterns.pick_department,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.teacher_select,
-            pattern=patterns.pick_teacher,
-        )
-    )
 
     application.add_handler(
         CommandHandler(
@@ -154,13 +174,6 @@ def main() -> None:
 
     application.add_handler(
         CommandHandler(
-            command="update_notbot",
-            callback=commands.update_notbot,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
             command="send_campaign",
             callback=commands.send_message_campaign,
         )
@@ -172,9 +185,6 @@ def main() -> None:
             callback=commands.batch_pair_check_handler,
         )
     )
-
-    # Consider adding a dedicated error handler
-    # application.add_error_handler
 
     if not isinstance(application.job_queue, JobQueue):
         logger.error("Application doesn't have job_queue")
