@@ -746,7 +746,10 @@ async def send_message_campaign(
     )
 
 
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def error_handler(
+    update: object,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
     logger.error("Exception while handling an update:", exc_info=context.error)
 
     assert context.error is not None

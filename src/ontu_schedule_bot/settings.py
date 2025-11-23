@@ -3,6 +3,7 @@
 import pydantic
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     BOT_TOKEN: str
 
@@ -12,5 +13,5 @@ class Settings(BaseSettings):
 
     DEBUG_CHAT_ID: int
 
-settings = Settings()
 
+settings = Settings()
