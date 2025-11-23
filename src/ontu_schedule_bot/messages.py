@@ -1,5 +1,5 @@
 import datetime
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 
 from ontu_schedule_bot import utils
 from ontu_schedule_bot.third_party.admin.schemas import (
@@ -8,7 +8,6 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     Department,
     Faculty,
     GroupPaginatedResponse,
-    Lesson,
     Pair,
     Subscription,
     TeacherPaginatedResponse,
@@ -559,7 +558,7 @@ async def select_department(
     )
 
 
-async def send_lesson_details(
+async def send_pair_details(
     update: "Update",
     pair: "Pair",
     day_schedule: "DaySchedule",
@@ -574,9 +573,62 @@ async def send_lesson_details(
     for lesson in lessons:
         text += f"{lesson.as_string(format='full')}\n\n"
 
+    keyboard_markup = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "Повернутися до розкладу 📅",
+                    callback_data=(
+                        "get_schedule",
+                        day_schedule,
+                    ),
+                )
+            ]
+        ]
+    )
+
     await edit_or_reply(
         update=update,
         text=text,
+        reply_markup=keyboard_markup,
+    )
+
+
+async def send_pair_details_with_bot(
+    bot: "Bot",
+    chat_id: str | int,
+    pair: "Pair",
+    day_schedule: "DaySchedule",
+) -> None:
+    """Sends detailed information about a lesson."""
+    lessons = pair.lessons
+
+    start_time, end_time = utils.get_pair_time_bounds(pair.number)
+
+    text = f"Деталі заняття №{pair.number} ({start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}) від {utils.get_weekday_name(day_schedule.date)} ({day_schedule.date.strftime('%d.%m')}):\n\n"
+
+    for lesson in lessons:
+        text += f"{lesson.as_string(format='full')}\n\n"
+
+    keyboard_markup = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "Повернутися до розкладу 📅",
+                    callback_data=(
+                        "get_schedule",
+                        day_schedule,
+                    ),
+                )
+            ]
+        ]
+    )
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        reply_markup=keyboard_markup,
+        parse_mode="HTML",
     )
 
 
@@ -601,8 +653,8 @@ async def send_day_schedule(
                 InlineKeyboardButton(
                     text=f"{pair.number}. {lesson.short_name}",
                     callback_data=(
-                        "get_lesson_details",
-                        lesson,
+                        "get_pair_details",
+                        pair,
                         day_schedule,
                     ),
                 )

@@ -5,10 +5,21 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:1e317629d261e2a43831e1b03a2715ec276431a11c9acf65b7e3e4bf5b124b3f"
+content_hash = "sha256:f836d6b94f8c95952ebe5bd02c8a9c8d7408d2e7dc0adfa319f224cb26bc7746"
 
 [[metadata.targets]]
-requires_python = ">=3.11"
+requires_python = ">=3.12"
+
+[[package]]
+name = "aiolimiter"
+version = "1.2.1"
+requires_python = "<4.0,>=3.8"
+summary = "asyncio rate limiter, a leaky bucket implementation"
+groups = ["default"]
+files = [
+    {file = "aiolimiter-1.2.1-py3-none-any.whl", hash = "sha256:d3f249e9059a20badcb56b61601a83556133655c11d1eb3dd3e04ff069e5f3c7"},
+    {file = "aiolimiter-1.2.1.tar.gz", hash = "sha256:e02a37ea1a855d9e832252a105420ad4d15011505512a1a1d814647451b5cca9"},
+]
 
 [[package]]
 name = "annotated-types"
@@ -278,28 +289,14 @@ files = [
 [[package]]
 name = "python-telegram-bot"
 version = "22.5"
-extras = ["callback-data"]
+extras = ["callback-data", "job-queue", "rate-limiter"]
 requires_python = ">=3.9"
 summary = "We have made you a wrapper you can't refuse"
 groups = ["default"]
 dependencies = [
-    "cachetools<6.3.0,>=5.3.3",
-    "python-telegram-bot==22.5",
-]
-files = [
-    {file = "python_telegram_bot-22.5-py3-none-any.whl", hash = "sha256:4b7cd365344a7dce54312cc4520d7fa898b44d1a0e5f8c74b5bd9b540d035d16"},
-    {file = "python_telegram_bot-22.5.tar.gz", hash = "sha256:82d4efd891d04132f308f0369f5b5929e0b96957901f58bcef43911c5f6f92f8"},
-]
-
-[[package]]
-name = "python-telegram-bot"
-version = "22.5"
-extras = ["job-queue"]
-requires_python = ">=3.9"
-summary = "We have made you a wrapper you can't refuse"
-groups = ["default"]
-dependencies = [
+    "aiolimiter<1.3,>=1.1",
     "apscheduler<3.12.0,>=3.10.4",
+    "cachetools<6.3.0,>=5.3.3",
     "python-telegram-bot==22.5",
 ]
 files = [

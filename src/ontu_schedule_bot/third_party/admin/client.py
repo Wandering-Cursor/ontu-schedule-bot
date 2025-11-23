@@ -151,6 +151,17 @@ class AdminClient:
             url="/chat/bulk/schedule",
         ) as response:
             for chunk in response.iter_bytes():
+                if chunk[:2] == b",\n":
+                    chunk = chunk[2:]
+                if chunk[-1] == b",":
+                    chunk = chunk[:-1]
+
+                if chunk.find(b']},\n{"'):
+                    chunk = b"[" + chunk + b"]"
+
+                if chunk[-2:] == b"]]":
+                    chunk = chunk[:-1]
+
                 try:
                     data = json.loads(chunk)
                 except json.JSONDecodeError as e:
@@ -158,13 +169,19 @@ class AdminClient:
                     print(e, chunk)
                     continue
 
-                yield {
-                    key: [
-                        DaySchedule.model_validate(item) if item is not None else None
-                        for item in value
-                    ]
-                    for key, value in data.items()
-                }
+                if not isinstance(data, list):
+                    data: list[dict] = [data]
+
+                for item in data:
+                    yield {
+                        key: [
+                            DaySchedule.model_validate(item)
+                            if item is not None
+                            else None
+                            for item in value
+                        ]
+                        for key, value in item.items()
+                    }
 
     def schedule_tomorrow(self, chat_id: str) -> list[DaySchedule | None]:
         response = self.client.get(

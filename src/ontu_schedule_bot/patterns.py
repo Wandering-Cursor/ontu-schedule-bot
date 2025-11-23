@@ -113,7 +113,7 @@ def start_pattern(callback_data):
     return False
 
 
-def get_schedule(callback_data):
+def get_schedule_pattern(callback_data):
     """Pattern for get_schedule"""
     if isinstance(callback_data, tuple):
         if callback_data[0] == "get_schedule":
@@ -129,10 +129,10 @@ def day_details_pattern(callback_data):
     return False
 
 
-def pair_details_pattern(callback_data):
+def get_pair_details_pattern(callback_data):
     """Pattern for pair_details"""
     if isinstance(callback_data, tuple):
-        if callback_data[0] == "pair_details":
+        if callback_data[0] == "get_pair_details":
             return True
     return False
 

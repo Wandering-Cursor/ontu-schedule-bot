@@ -11,11 +11,12 @@ from telegram.ext import (
     CommandHandler,
     JobQueue,
     PicklePersistence,
+    AIORateLimiter,
 )
 
 from ontu_schedule_bot import commands, patterns
-from ontu_schedule_bot.enums import notification_times
 from ontu_schedule_bot.settings import settings
+from ontu_schedule_bot.utils import PAIR_START_TIME
 
 os.makedirs("logs", exist_ok=True)
 
@@ -45,6 +46,11 @@ def main() -> None:
         .persistence(persistence)
         .arbitrary_callback_data(True)
         .concurrent_updates(True)
+        .rate_limiter(
+            AIORateLimiter(
+                max_retries=5,
+            )
+        )
         .build()
     )
 
@@ -156,25 +162,27 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(
             callback=commands.get_schedule,
-            pattern=patterns.get_schedule,
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback=commands.get_day_details,
-            pattern=patterns.day_details_pattern,
+            pattern=patterns.get_schedule_pattern,
         )
     )
     application.add_handler(
         CallbackQueryHandler(
             callback=commands.get_pair_details,
-            pattern=patterns.pair_details_pattern,
+            pattern=patterns.get_pair_details_pattern,
         )
     )
+
     application.add_handler(
         CallbackQueryHandler(
             callback=commands.toggle_subscription,
             pattern=patterns.toggle_subscription_pattern,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            command="manual_batch_pair_check",
+            callback=commands.manual_batch_pair_check,
         )
     )
 
@@ -185,21 +193,23 @@ def main() -> None:
         )
     )
 
-    application.add_handler(
-        CommandHandler(
-            command="batch_pair_check",
-            callback=commands.batch_pair_check_handler,
-        )
-    )
-
     if not isinstance(application.job_queue, JobQueue):
         logger.error("Application doesn't have job_queue")
         return
 
-    for time_kwargs in notification_times:
+    for _pair, start_time in PAIR_START_TIME.items():
+        # Convert time to datetime, subtract 10 minutes, then back to time
+        temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)
+        temp_datetime -= datetime.timedelta(minutes=10)
+        adjusted_time = temp_datetime.time()
+
         application.job_queue.run_daily(
             commands.batch_pair_check,
-            time=datetime.time(tzinfo=pytz.timezone("Europe/Kiev"), **time_kwargs),
+            time=datetime.time(
+                hour=adjusted_time.hour,
+                minute=adjusted_time.minute,
+                tzinfo=pytz.timezone("Europe/Kyiv"),
+            ),
             days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
             job_kwargs={
                 "misfire_grace_time": None,

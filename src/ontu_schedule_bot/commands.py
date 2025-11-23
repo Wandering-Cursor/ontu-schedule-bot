@@ -2,16 +2,14 @@
 
 import contextvars
 import datetime
-import logging
 import time
 from typing import Literal
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram import Update
 from telegram.constants import ParseMode
-from telegram.error import Forbidden
 from telegram.ext import ContextTypes
 
-from ontu_schedule_bot import classes, decorators, utils
+from ontu_schedule_bot import decorators, utils
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
 from ontu_schedule_bot.third_party.admin.enums import Platform
@@ -23,6 +21,8 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     Group,
     Subscription,
     Teacher,
+    Pair,
+    DaySchedule,
 )
 from ontu_schedule_bot import messages
 from ontu_schedule_bot.utils import PAIR_START_TIME
@@ -504,9 +504,14 @@ async def next_pair(
             pair_start_time = datetime.datetime.combine(
                 item.date,
                 PAIR_START_TIME.get(pair.number, datetime.time(hour=0, minute=0)),
+                tzinfo=now.tzinfo,
             )
-            if pair_start_time > now and pair.lessons:
-                await messages.send_lesson_details(
+
+            if pair_start_time < now:
+                continue
+
+            if pair.lessons:
+                await messages.send_pair_details(
                     update=update,
                     pair=pair,
                     day_schedule=item,
@@ -515,6 +520,7 @@ async def next_pair(
 
     delta = 1
 
+    # Find the next closest pair in the upcoming days
     while delta <= 7:
         date = today + datetime.timedelta(days=delta)
         schedule_items = client.schedule_day(
@@ -528,7 +534,7 @@ async def next_pair(
 
             for pair in item.pairs:
                 if pair.lessons:
-                    await messages.send_lesson_details(
+                    await messages.send_pair_details(
                         update=update,
                         pair=pair,
                         day_schedule=item,
@@ -572,142 +578,127 @@ async def get_week_schedule(
         )
 
 
-# TODO: Replace this method
-@decorators.reply_with_exception
-async def get_pair_details(update: Update, _):
-    """Sends pair's details"""
+async def get_pair_details(
+    update: Update,
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    current_update.set(update)
+
+    await messages.processing_update(update=update)
+
     query = update.callback_query
     if not query or not query.message or not query.data:
-        raise ValueError("get_day_details is designed for callbacks")
+        raise ValueError("get_pair_details is designed for callbacks")
 
-    await query.answer(text="Будь-ласка, зачекайте")
+    pair: Pair = query.data[1]  # type: ignore
+    day: DaySchedule = query.data[2]  # type: ignore
 
-    callback_data: tuple[str, classes.Pair, classes.Day] = tuple(query.data)  # type: ignore
-
-    pair = callback_data[1]
-    day = callback_data[2]
-
-    keyboard = [
-        [InlineKeyboardButton(text="Назад ⤴️", callback_data=("day_details", day))]
-    ]
-
-    await query.message.edit_text(
-        text=pair.as_text(day_name=day.name),
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
+    await messages.send_pair_details(
+        update=update,
+        pair=pair,
+        day_schedule=day,
     )
 
 
-# TODO: Replace batch processing
-@decorators.reply_with_exception
-async def batch_pair_check_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """This method is used to check for upcoming pairs"""
-    if not update.effective_chat:
-        return
-    if update.effective_chat.id != settings.DEBUG_CHAT_ID:
-        return
-
-    await batch_pair_check(context=context, _=update)
-
-
-@decorators.reply_with_exception
-async def batch_pair_check(
-    context: ContextTypes.DEFAULT_TYPE, _: Update | None = None
+async def get_schedule(
+    update: Update,
+    _context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
-    """This method is used to check for upcoming pairs"""
-    start_time = time.time()
-    batch = utils.Getter().get_batch_schedule()
+    current_update.set(update)
 
-    for group in batch:
-        chat_infos: list[dict[str, int]] = group["chat_info"]  # type: ignore
-        for chat_info in chat_infos:
-            # type: ignore
-            schedule: "utils.classes.Schedule" = group["schedule"]
-            pair, string = schedule.get_next_pair(find_all=False)
-            if not pair:
-                continue
-            pair_as_text = pair.as_text(day_name=string)
-            try:
-                await context.bot.send_message(
-                    chat_id=chat_info["chat_id"],
-                    message_thread_id=chat_info["topic_id"],
-                    text=pair_as_text,
-                    parse_mode="HTML",
-                )
-            except Forbidden as exc:
-                logging.exception(exc)
-                await context.bot.send_message(
-                    chat_id=settings.DEBUG_CHAT_ID,
-                    text=f"Користувач заблокував бота: {chat_info=}\nВ методі batch_pair_check",
-                )
-                continue
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                logging.exception(exc)
-                await decorators.send_exception(
-                    bot=context.bot,
-                    exception=exc,
-                    func=context.bot.send_message,
-                    bot_token=context.bot.token,
-                    kwargs={
-                        "chat_info": chat_info,
-                        "text": pair_as_text,
-                        "parse_mode": "HTML",
-                    },
-                )
-                continue
+    await messages.processing_update(update=update)
+
+    query = update.callback_query
+    if not query or not query.message or not query.data:
+        raise ValueError("get_schedule is designed for callbacks")
+
+    day_schedule: DaySchedule = query.data[1]  # type: ignore
+
+    telegram_chat = update.effective_chat
+    if not telegram_chat:
+        raise RuntimeError("No chat in update")
+
+    await messages.send_day_schedule(
+        update=get_current_update(),
+        day_schedule=day_schedule,
+    )
+
+
+async def manual_batch_pair_check(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    await batch_pair_check(context=context)
+
+
+async def batch_pair_check(
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    start_time = time.time()
+
+    client = get_current_client()
+
+    batch_generator = client.bulk_schedule()
+
+    now = utils.current_time_in_kiev()
+
+    for record in batch_generator:
+        for chat_id, schedules in record.items():
+            for schedule in schedules:
+                if not schedule:
+                    continue
+
+                for pair in schedule.pairs:
+                    pair_start_time = datetime.datetime.combine(
+                        schedule.date,
+                        PAIR_START_TIME.get(
+                            pair.number, datetime.time(hour=0, minute=0)
+                        ),
+                        tzinfo=now.tzinfo,
+                    )
+
+                    if pair_start_time < now:
+                        continue
+
+                    if pair.lessons:
+                        await messages.send_pair_details_with_bot(
+                            bot=context.bot,
+                            chat_id=chat_id,
+                            pair=pair,
+                            day_schedule=schedule,
+                        )
+                    else:
+                        # Only send the next upcoming pair
+                        break
 
     end_time = time.time()
 
+    duration = end_time - start_time
+
     await context.bot.send_message(
         chat_id=settings.DEBUG_CHAT_ID,
-        text=f"Batch pair check finished in {end_time - start_time:.2f} seconds",
-        disable_notification=True,
+        text=f"Batch pair check completed in {round(duration, 2)} seconds.",
     )
 
 
-# TODO: Replace this method
+async def toggle_subscription(
+    update: Update,
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Toggles subscription on/off"""
+    await messages.processing_update(update=update)
 
+    chat = await get_chat_info(update=update)
 
-@decorators.reply_with_exception
-async def toggle_subscription(update: Update, _):
-    """This method toggles current state of subscription"""
-    query = update.callback_query
+    client = get_current_client()
 
-    if not query or not update.effective_chat:
-        raise ValueError("Improper method usage")
+    subscription = client.toggle_subscription(chat_id=chat.platform_chat_id)
 
-    if not query.message or not query.data:
-        raise ValueError("Incomplete data :(")
-
-    data: tuple[str, classes.Chat] = tuple(query.data)  # type: ignore
-
-    chat = data[1]
-    if not chat.subscription:
-        raise ValueError("В вас ще немає підписки! Здається ви мені бота зламали...")
-
-    new_status = not chat.subscription.is_active
-
-    if chat.subscription.group:
-        utils.Setter().set_chat_group(
-            message=update.effective_message,
-            group=chat.subscription.group,
-            is_active=new_status,
-        )
-    if chat.subscription.teacher:
-        utils.Setter().set_chat_teacher(
-            message=update.effective_message,
-            teacher=chat.subscription.teacher,
-            is_active=new_status,
-        )
-
-    if new_status:
-        status = "активна"
-    else:
-        status = "вимкнена"
-
-    await query.answer(text=f"Ваша підписка тепер {status}", show_alert=True)
-
-    await start_command(update=update, context=_)
+    await messages.start_command(
+        update=update,
+        chat=chat,
+        subscription=subscription,
+    )
 
 
 @decorators.reply_with_exception

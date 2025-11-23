@@ -6,9 +6,7 @@ authors = [
     {name = "Pavlo Pohorieltsev", email = "49622129+makisukurisu@users.noreply.github.com"},
 ]
 dependencies = [
-    "python-telegram-bot>=22.5,<23.0",
-    "python-telegram-bot[job-queue]",
-    "python-telegram-bot[callback-data]",
+    "python-telegram-bot[callback-data,rate-limiter,job-queue]>=22.5,<23.0",
     "httpx>=0.28.1,<0.29.0",
     "pydantic-settings>=2.11.0",
 ]
