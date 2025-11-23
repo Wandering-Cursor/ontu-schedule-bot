@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 from typing import Generator
 import httpx
 import pydantic
@@ -19,6 +20,9 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     TeacherPaginatedResponse,
     WeekSchedule,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class AdminClient:
@@ -165,8 +169,7 @@ class AdminClient:
                 try:
                     data = json.loads(chunk)
                 except json.JSONDecodeError as e:
-                    # TODO: Use logging
-                    print(e, chunk)
+                    logger.warning("Failed to decode chunk: %s", e)
                     continue
 
                 if not isinstance(data, list):
@@ -241,8 +244,7 @@ class AdminClient:
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            # TODO: Use logging
-            print("Error fetching week schedule:", e.response.text)
+            logger.warning("Error fetching week schedule: %s", e.response.text)
             raise e
 
         return [WeekSchedule.model_validate(item) for item in response.json()]
