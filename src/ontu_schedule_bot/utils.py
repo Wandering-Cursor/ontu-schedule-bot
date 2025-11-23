@@ -11,6 +11,7 @@ import httpx
 from ontu_schedule_bot import classes
 from ontu_schedule_bot.enums import Endpoints, Statuses
 from ontu_schedule_bot.settings import settings
+import re
 
 
 # region Requesters
@@ -516,3 +517,103 @@ def get_weekday_name(date: datetime.date) -> str:
     }
 
     return weekdays.get(date.weekday(), "Невідомий день")
+
+
+def split_message(text: str, max_length: int = 4096) -> list[str]:
+    """
+    Split a message into chunks no longer than max_length characters.
+    Tries to split on sentence boundaries, line breaks, or word boundaries when possible.
+    Preserves HTML tags when splitting by closing broken tags and reopening them in the next chunk.
+
+    Args:
+        text (str): The text to split
+        max_length (int): Maximum length of each chunk (default: 4096)
+
+    Returns:
+        list[str]: List of text chunks
+    """
+    if len(text) <= max_length:
+        return [text]
+
+    chunks = []
+    remaining = text
+
+    def find_open_tags(text_chunk: str) -> list[str]:
+        """Find unclosed HTML tags in the text chunk"""
+        # Find all opening tags
+        opening_tags = re.findall(r"<([^/\s>]+)[^>]*>", text_chunk)
+        # Find all closing tags
+        closing_tags = re.findall(r"</([^>\s]+)>", text_chunk)
+
+        # Track which tags are still open
+        open_tags = []
+        for tag in opening_tags:
+            open_tags.append(tag)
+
+        for tag in closing_tags:
+            if tag in open_tags:
+                open_tags.remove(tag)
+
+        return open_tags
+
+    while len(remaining) > max_length:
+        # Find the best split point within max_length
+        split_point = max_length
+
+        # Look for sentence endings (. ! ?) followed by space or newline
+        for i in range(max_length - 1, max_length // 2, -1):
+            if (
+                remaining[i] in ".!?"
+                and i + 1 < len(remaining)
+                and remaining[i + 1] in " \n"
+            ):
+                split_point = i + 1
+                break
+
+        # If no sentence boundary found, look for line breaks
+        if split_point == max_length:
+            for i in range(max_length - 1, max_length // 2, -1):
+                if remaining[i] == "\n":
+                    split_point = i + 1
+                    break
+
+        # If no line break found, look for word boundaries
+        if split_point == max_length:
+            for i in range(max_length - 1, max_length // 2, -1):
+                if remaining[i] == " ":
+                    split_point = i + 1
+                    break
+
+        # If no good split point found, check for HTML tag boundaries
+        if split_point == max_length:
+            for i in range(max_length - 1, max_length // 2, -1):
+                if remaining[i] == ">":
+                    split_point = i + 1
+                    break
+
+        # Extract the chunk
+        chunk = remaining[:split_point].rstrip()
+
+        # Find open tags that need to be closed
+        open_tags = find_open_tags(chunk)
+
+        # Close any open tags at the end of this chunk
+        if open_tags:
+            for tag in reversed(open_tags):
+                chunk += f"</{tag}>"
+
+        chunks.append(chunk)
+
+        # Prepare the next chunk by reopening the tags
+        next_chunk_start = ""
+        if open_tags:
+            for tag in open_tags:
+                next_chunk_start += f"<{tag}>"
+
+        remaining = next_chunk_start + remaining[split_point:].lstrip()
+
+    # Add the last chunk if there's remaining text
+    if remaining:
+        chunks.append(remaining)
+
+    return chunks

@@ -54,6 +54,10 @@ def main() -> None:
         .build()
     )
 
+    application.add_error_handler(
+        commands.error_handler,
+    )
+
     application.add_handler(
         CommandHandler(
             command="start",

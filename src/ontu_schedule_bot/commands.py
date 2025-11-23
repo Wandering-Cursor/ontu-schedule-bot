@@ -2,14 +2,19 @@
 
 import contextvars
 import datetime
+import html
+import json
+import logging
 import time
+import traceback
 from typing import Literal
+
 
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from ontu_schedule_bot import decorators, utils
+from ontu_schedule_bot import utils
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
 from ontu_schedule_bot.third_party.admin.enums import Platform
@@ -30,6 +35,7 @@ from ontu_schedule_bot.utils import PAIR_START_TIME
 
 current_client = contextvars.ContextVar("current_client")
 current_update = contextvars.ContextVar("update")
+logger = logging.getLogger(__name__)
 
 
 def get_current_client() -> AdminClient:
@@ -73,11 +79,6 @@ async def get_subscription_info(
     return client.get_subscription(chat_id=chat.platform_chat_id)
 
 
-# TODO: Deprecate `reply_with_exception` decorator
-# Use error handling provided by telegram.ext.Application instead
-
-
-@decorators.reply_with_exception
 async def start_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -701,7 +702,6 @@ async def toggle_subscription(
     )
 
 
-@decorators.reply_with_exception
 async def send_message_campaign(
     update: Update,
     _: ContextTypes.DEFAULT_TYPE,
@@ -744,3 +744,39 @@ async def send_message_campaign(
     await message.reply_text(
         f"Повідомлення надіслано всім отримувачам за {round(end - start, 2)} секунд"
     )
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    logger.error("Exception while handling an update:", exc_info=context.error)
+
+    assert context.error is not None
+
+    tb_list = traceback.format_exception(
+        None,
+        context.error,
+        context.error.__traceback__,
+    )
+
+    tb_string = "".join(tb_list)
+
+    update_str = update.to_dict() if isinstance(update, Update) else str(update)
+
+    message = (
+        "An exception was raised while handling an update\n"
+        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
+        "</pre>\n\n"
+        f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
+        f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
+        f"<pre>{html.escape(tb_string)}</pre>"
+    )
+
+    chunks = [message]
+    if len(message) > 4096:
+        chunks = utils.split_message(message, 4000)
+
+    for text in chunks:
+        await context.bot.send_message(
+            chat_id=settings.DEBUG_CHAT_ID,
+            text=text,
+            parse_mode=ParseMode.HTML,
+        )
