@@ -42,7 +42,7 @@ def main() -> None:
 
     application = (
         Application.builder()
-        .token(settings.BOT_TOKEN)
+        .token(settings.BOT_TOKEN.get_secret_value())
         .persistence(persistence)
         .arbitrary_callback_data(True)
         .concurrent_updates(True)
@@ -187,13 +187,6 @@ def main() -> None:
         CommandHandler(
             command="manual_batch_pair_check",
             callback=commands.manual_batch_pair_check,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            command="send_campaign",
-            callback=commands.send_message_campaign,
         )
     )
 
