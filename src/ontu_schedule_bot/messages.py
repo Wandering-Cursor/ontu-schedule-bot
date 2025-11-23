@@ -698,7 +698,7 @@ async def send_week_schedule(
                     text=f"{utils.get_weekday_name(day_schedule.date)} - {day_schedule.date.strftime('%d.%m')}",
                     callback_data=(
                         "get_schedule",
-                        day_schedule.date,
+                        day_schedule,
                     ),
                 ),
             ]
