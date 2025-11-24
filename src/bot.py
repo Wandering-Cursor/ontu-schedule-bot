@@ -165,6 +165,12 @@ def main() -> None:
 
     application.add_handler(
         CallbackQueryHandler(
+            callback=commands.get_week_schedule,
+            pattern=patterns.get_week_schedule_pattern,
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
             callback=commands.get_schedule,
             pattern=patterns.get_schedule_pattern,
         )

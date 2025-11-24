@@ -597,6 +597,7 @@ async def send_pair_details(
 async def send_pair_details_with_bot(
     bot: "Bot",
     chat_id: str | int,
+    message_thread_id: int | None,
     pair: "Pair",
     day_schedule: "DaySchedule",
 ) -> None:
@@ -626,6 +627,7 @@ async def send_pair_details_with_bot(
 
     await bot.send_message(
         chat_id=chat_id,
+        message_thread_id=message_thread_id,
         text=text,
         reply_markup=keyboard_markup,
         parse_mode="HTML",
@@ -661,6 +663,15 @@ async def send_day_schedule(
             )
 
         keyboard.append(pair_row)
+
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                "Повернутися до розкладу тижня 📅",
+                callback_data=("get_week_schedule",),
+            )
+        ]
+    )
 
     await edit_or_reply(
         update=update,
@@ -699,6 +710,7 @@ async def send_week_schedule(
                     callback_data=(
                         "get_schedule",
                         day_schedule,
+                        week_schedule,
                     ),
                 ),
             ]

@@ -67,7 +67,17 @@ async def get_chat_info(
 
     client = get_current_client()
 
-    return client.get_chat(chat_id=str(telegram_chat.id))
+    chat_id = str(telegram_chat.id)
+
+    if (
+        telegram_chat.is_forum
+        and update.effective_message
+        and update.effective_message.is_topic_message
+        and update.effective_message.message_thread_id
+    ):
+        chat_id += f":{update.effective_message.message_thread_id}"
+
+    return client.get_chat(chat_id=chat_id)
 
 
 async def get_subscription_info(
@@ -95,10 +105,15 @@ async def start_command(
 
     client = AdminClient()
 
+    if message.message_thread_id:
+        telegram_chat_id = f"{telegram_chat.id}:{message.message_thread_id}"
+    else:
+        telegram_chat_id = str(telegram_chat.id)
+
     chat = client.get_or_create_chat(
         chat_info=CreateChatRequest(
             platform=Platform.TELEGRAM,
-            platform_chat_id=str(telegram_chat.id),
+            platform_chat_id=telegram_chat_id,
             title=telegram_chat.title or telegram_chat.full_name or "No Name",
             username=telegram_chat.username or None,
             first_name=telegram_chat.first_name or None,
@@ -436,9 +451,7 @@ async def get_today_schedule(
     if not telegram_chat:
         raise RuntimeError("No chat in update")
 
-    client = get_current_client()
-
-    chat = client.get_chat(chat_id=str(telegram_chat.id))
+    chat = await get_chat_info(update=update)
 
     today = utils.current_time_in_kiev().date()
     await send_day_schedule(chat=chat, date=today)
@@ -457,9 +470,7 @@ async def get_tomorrow_schedule(
     if not telegram_chat:
         raise RuntimeError("No chat in update")
 
-    client = get_current_client()
-
-    chat = client.get_chat(chat_id=str(telegram_chat.id))
+    chat = await get_chat_info(update=update)
 
     tomorrow = utils.current_time_in_kiev().date() + datetime.timedelta(days=1)
     await send_day_schedule(chat=chat, date=tomorrow)
@@ -486,7 +497,7 @@ async def next_pair(
 
     client = get_current_client()
 
-    chat = client.get_chat(chat_id=str(telegram_chat.id))
+    chat = await get_chat_info(update=update)
 
     now = utils.current_time_in_kiev()
     today = now.date()
@@ -564,7 +575,7 @@ async def get_week_schedule(
 
     client = get_current_client()
 
-    chat = client.get_chat(chat_id=str(telegram_chat.id))
+    chat = await get_chat_info(update=update)
 
     schedule_items = client.schedule_week(
         chat_id=chat.platform_chat_id,
@@ -633,6 +644,45 @@ async def manual_batch_pair_check(
     await batch_pair_check(context=context)
 
 
+async def process_record(
+    record: dict[str, list[DaySchedule | None]],
+    now: datetime.datetime,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    for chat_id, schedules in record.items():
+        message_thread_id = None
+
+        if chat_id.find(":") != -1:
+            chat_id, message_thread_id = chat_id.split(":", 1)
+            message_thread_id = int(message_thread_id)
+
+        for schedule in schedules:
+            if not schedule:
+                continue
+
+            for pair in schedule.pairs:
+                pair_start_time = datetime.datetime.combine(
+                    schedule.date,
+                    PAIR_START_TIME.get(pair.number, datetime.time(hour=0, minute=0)),
+                    tzinfo=now.tzinfo,
+                )
+
+                if pair_start_time < now:
+                    continue
+
+                if pair.lessons:
+                    await messages.send_pair_details_with_bot(
+                        bot=context.bot,
+                        chat_id=chat_id,
+                        message_thread_id=message_thread_id,
+                        pair=pair,
+                        day_schedule=schedule,
+                    )
+                else:
+                    # Only send the next upcoming pair for each schedule
+                    break
+
+
 async def batch_pair_check(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
@@ -645,41 +695,26 @@ async def batch_pair_check(
     now = utils.current_time_in_kiev()
 
     for record in batch_generator:
-        for chat_id, schedules in record.items():
-            for schedule in schedules:
-                if not schedule:
-                    continue
-
-                for pair in schedule.pairs:
-                    pair_start_time = datetime.datetime.combine(
-                        schedule.date,
-                        PAIR_START_TIME.get(
-                            pair.number, datetime.time(hour=0, minute=0)
-                        ),
-                        tzinfo=now.tzinfo,
-                    )
-
-                    if pair_start_time < now:
-                        continue
-
-                    if pair.lessons:
-                        await messages.send_pair_details_with_bot(
-                            bot=context.bot,
-                            chat_id=chat_id,
-                            pair=pair,
-                            day_schedule=schedule,
-                        )
-                    else:
-                        # Only send the next upcoming pair for each schedule
-                        break
+        try:
+            await process_record(record=record, now=now, context=context)
+        except Exception as e:
+            logger.error(f"Error processing record: {e}", exc_info=True)
+            await send_message_to_debug_chat(
+                context=context,
+                message=get_error_message_text(
+                    error=e,
+                    context=context,
+                    base_error_message="Error processing record in batch pair check",
+                ),
+            )
 
     end_time = time.time()
 
     duration = end_time - start_time
 
-    await context.bot.send_message(
-        chat_id=settings.DEBUG_CHAT_ID,
-        text=f"Batch pair check completed in {round(duration, 2)} seconds.",
+    await send_message_to_debug_chat(
+        context=context,
+        message=f"Batch pair check completed in {round(duration, 2)} seconds.",
     )
 
 
@@ -703,26 +738,24 @@ async def toggle_subscription(
     )
 
 
-async def error_handler(
-    update: object,
+def get_error_message_text(
+    error: Exception,
     context: ContextTypes.DEFAULT_TYPE,
-) -> None:
-    logger.error("Exception while handling an update:", exc_info=context.error)
-
-    assert context.error is not None
-
+    update: object | None = None,
+    base_error_message: str = "An exception was raised while handling an update",
+) -> str:
     tb_list = traceback.format_exception(
         None,
-        context.error,
-        context.error.__traceback__,
+        error,
+        error.__traceback__,
     )
 
     tb_string = "".join(tb_list)
 
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
 
-    message = (
-        "An exception was raised while handling an update\n"
+    return (
+        f"{base_error_message}\n"
         f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False, default=repr))}"
         "</pre>\n\n"
         f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
@@ -730,6 +763,12 @@ async def error_handler(
         f"<pre>{html.escape(tb_string)}</pre>"
     )
 
+
+async def send_message_to_debug_chat(
+    context: ContextTypes.DEFAULT_TYPE,
+    message: str,
+) -> None:
+    """Sends a message to the debug chat"""
     chunks = [message]
     if len(message) > 4096:
         chunks = utils.split_message(message, 4000)
@@ -740,3 +779,23 @@ async def error_handler(
             text=text,
             parse_mode=ParseMode.HTML,
         )
+
+
+async def error_handler(
+    update: object,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    logger.error("Exception while handling an update:", exc_info=context.error)
+
+    assert context.error is not None
+
+    message = get_error_message_text(
+        error=context.error,
+        context=context,
+        update=update,
+    )
+
+    await send_message_to_debug_chat(
+        context=context,
+        message=message,
+    )
