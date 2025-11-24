@@ -597,6 +597,7 @@ async def send_pair_details(
 async def send_pair_details_with_bot(
     bot: "Bot",
     chat_id: str | int,
+    message_thread_id: int | None,
     pair: "Pair",
     day_schedule: "DaySchedule",
 ) -> None:
@@ -626,6 +627,7 @@ async def send_pair_details_with_bot(
 
     await bot.send_message(
         chat_id=chat_id,
+        message_thread_id=message_thread_id,
         text=text,
         reply_markup=keyboard_markup,
         parse_mode="HTML",
