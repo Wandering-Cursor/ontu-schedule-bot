@@ -9,29 +9,26 @@ import time
 import traceback
 from typing import Literal
 
-
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from ontu_schedule_bot import utils
+from ontu_schedule_bot import messages, utils
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
 from ontu_schedule_bot.third_party.admin.enums import Platform
 from ontu_schedule_bot.third_party.admin.schemas import (
     Chat,
     CreateChatRequest,
+    DaySchedule,
     Department,
     Faculty,
     Group,
+    Pair,
     Subscription,
     Teacher,
-    Pair,
-    DaySchedule,
 )
-from ontu_schedule_bot import messages
 from ontu_schedule_bot.utils import PAIR_START_TIME
-
 
 current_client = contextvars.ContextVar("current_client")
 current_update = contextvars.ContextVar("update")
@@ -52,8 +49,8 @@ def get_current_update() -> Update:
     """Gets current update from contextvar"""
     try:
         update = current_update.get()
-    except LookupError:
-        raise RuntimeError("No update in context")
+    except LookupError as e:
+        raise RuntimeError("No update in context") from e
     return update
 
 
@@ -91,8 +88,7 @@ async def get_subscription_info(
 
 async def start_command(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    base_text: str | None = None,
+    _context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Executed when user initiates conversation, or returns to main menu"""
     telegram_chat = update.effective_chat
@@ -118,9 +114,7 @@ async def start_command(
             username=telegram_chat.username or None,
             first_name=telegram_chat.first_name or None,
             last_name=telegram_chat.last_name or None,
-            language_code=update.effective_user.language_code
-            if update.effective_user
-            else None,
+            language_code=update.effective_user.language_code if update.effective_user else None,
             additional_info={
                 "type": telegram_chat.type,
                 "is_forum": telegram_chat.is_forum,
@@ -382,7 +376,7 @@ async def add_subscription_item(
 
     query = update.callback_query
     if not query or not query.message or not query.data:
-        return
+        return None
 
     item_type: Literal["group", "teacher"] = query.data[1]  # type: ignore
     item: Group | Teacher = query.data[2]  # type: ignore
@@ -476,7 +470,7 @@ async def get_tomorrow_schedule(
     await send_day_schedule(chat=chat, date=tomorrow)
 
 
-async def next_pair(
+async def next_pair(  # noqa: C901
     update: "Update",
     _context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
@@ -487,8 +481,8 @@ async def next_pair(
     Note: Once using next day's schedule, ignores time checks and returns first pair with non-empty lessons.
 
     If current time is not past the start of the last pair, performs check for current day.
-    Should only send the next upcoming pair. (If no more pairs today, search in tomorrow's schedule.)
-    """
+    Should only send the next upcoming pair. (If no more pairs today, search in tomorrow's schedule)
+    """  # noqa: E501
     await messages.processing_update(update=update)
 
     telegram_chat = update.effective_chat
@@ -533,7 +527,7 @@ async def next_pair(
     delta = 1
 
     # Find the next closest pair in the upcoming days
-    while delta <= 7:
+    while delta <= 7:  # noqa: PLR2004
         date = today + datetime.timedelta(days=delta)
         schedule_items = client.schedule_day(
             chat_id=chat.platform_chat_id,
@@ -638,7 +632,7 @@ async def get_schedule(
 
 
 async def manual_batch_pair_check(
-    update: Update,
+    update: Update,  # noqa: ARG001
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     await batch_pair_check(context=context)
@@ -653,7 +647,7 @@ async def process_record(
         message_thread_id = None
 
         if chat_id.find(":") != -1:
-            chat_id, message_thread_id = chat_id.split(":", 1)
+            chat_id, message_thread_id = chat_id.split(":", 1)  # noqa: PLW2901
             message_thread_id = int(message_thread_id)
 
         for schedule in schedules:
@@ -756,7 +750,7 @@ def get_error_message_text(
 
     return (
         f"{base_error_message}\n"
-        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False, default=repr))}"
+        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False, default=repr))}"  # noqa: E501
         "</pre>\n\n"
         f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
         f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
@@ -770,7 +764,7 @@ async def send_message_to_debug_chat(
 ) -> None:
     """Sends a message to the debug chat"""
     chunks = [message]
-    if len(message) > 4096:
+    if len(message) > 4096:  # noqa: PLR2004
         chunks = utils.split_message(message, 4000)
 
     for text in chunks:

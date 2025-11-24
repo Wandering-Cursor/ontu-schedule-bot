@@ -1,10 +1,9 @@
 """This is a utils module, it contains Requests and pagination for bot"""
 
 import datetime
+import re
 
 import pytz
-
-import re
 
 
 def current_time_in_kiev() -> datetime.datetime:
@@ -61,7 +60,7 @@ def get_weekday_name(date: datetime.date) -> str:
     return weekdays.get(date.weekday(), "Невідомий день")
 
 
-def split_message(text: str, max_length: int = 4096) -> list[str]:
+def split_message(text: str, max_length: int = 4096) -> list[str]:  # noqa: C901, PLR0912
     """
     Split a message into chunks no longer than max_length characters.
     Tries to split on sentence boundaries, line breaks, or word boundaries when possible.
@@ -111,11 +110,7 @@ def split_message(text: str, max_length: int = 4096) -> list[str]:
 
         # Look for sentence endings (. ! ?) followed by space or newline
         for i in range(max_length - 1, max_length // 2, -1):
-            if (
-                remaining[i] in ".!?"
-                and i + 1 < len(remaining)
-                and remaining[i + 1] in " \n"
-            ):
+            if remaining[i] in ".!?" and i + 1 < len(remaining) and remaining[i + 1] in " \n":
                 split_point = i + 1
                 break
 

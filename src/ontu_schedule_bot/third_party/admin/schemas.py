@@ -1,5 +1,6 @@
 import datetime
 from typing import Literal, TypeVar
+
 import pydantic
 
 from ontu_schedule_bot.third_party.admin.enums import Platform
@@ -154,11 +155,10 @@ class Lesson(Schema):
 
         return "\n".join(parts)
 
-    def as_string(self, format: Literal["short", "full"] = "short") -> str:
-        if format == "short":
+    def as_string(self, string_format: Literal["short", "full"] = "short") -> str:
+        if string_format == "short":
             return self._as_string_short()
-        else:
-            return self._as_string_full()
+        return self._as_string_full()
 
 
 class Pair(Schema):

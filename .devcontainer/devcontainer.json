@@ -13,10 +13,13 @@
 				"ms-vscode-remote.remote-containers",
 				"ms-python.black-formatter",
 				"ms-python.isort",
-				"ms-python.pylint",
 				"charliermarsh.ruff"
-			]
+			],
+			"settings": {
+				"editor.formatOnSave": true,
+				"ruff.fixAll": true
+			}
 		}
 	},
-	"postCreateCommand": "pdm install"
+	"postCreateCommand": "uv sync --locked"
 }
