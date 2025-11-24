@@ -67,7 +67,17 @@ async def get_chat_info(
 
     client = get_current_client()
 
-    return client.get_chat(chat_id=str(telegram_chat.id))
+    chat_id = str(telegram_chat.id)
+
+    if (
+        telegram_chat.is_forum
+        and update.effective_message
+        and update.effective_message.is_topic_message
+        and update.effective_message.message_thread_id
+    ):
+        chat_id += f":{update.effective_message.message_thread_id}"
+
+    return client.get_chat(chat_id=chat_id)
 
 
 async def get_subscription_info(
@@ -443,7 +453,7 @@ async def get_today_schedule(
 
     client = get_current_client()
 
-    chat = client.get_chat(chat_id=str(telegram_chat.id))
+    chat = await get_chat_info(update=update)
 
     today = utils.current_time_in_kiev().date()
     await send_day_schedule(chat=chat, date=today)
@@ -462,9 +472,7 @@ async def get_tomorrow_schedule(
     if not telegram_chat:
         raise RuntimeError("No chat in update")
 
-    client = get_current_client()
-
-    chat = client.get_chat(chat_id=str(telegram_chat.id))
+    chat = await get_chat_info(update=update)
 
     tomorrow = utils.current_time_in_kiev().date() + datetime.timedelta(days=1)
     await send_day_schedule(chat=chat, date=tomorrow)
@@ -491,7 +499,7 @@ async def next_pair(
 
     client = get_current_client()
 
-    chat = client.get_chat(chat_id=str(telegram_chat.id))
+    chat = await get_chat_info(update=update)
 
     now = utils.current_time_in_kiev()
     today = now.date()
@@ -569,7 +577,7 @@ async def get_week_schedule(
 
     client = get_current_client()
 
-    chat = client.get_chat(chat_id=str(telegram_chat.id))
+    chat = await get_chat_info(update=update)
 
     schedule_items = client.schedule_week(
         chat_id=chat.platform_chat_id,
