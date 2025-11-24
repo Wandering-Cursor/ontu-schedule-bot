@@ -664,6 +664,15 @@ async def send_day_schedule(
 
         keyboard.append(pair_row)
 
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                "Повернутися до розкладу тижня 📅",
+                callback_data=("get_week_schedule",),
+            )
+        ]
+    )
+
     await edit_or_reply(
         update=update,
         text=text,
@@ -701,6 +710,7 @@ async def send_week_schedule(
                     callback_data=(
                         "get_schedule",
                         day_schedule,
+                        week_schedule,
                     ),
                 ),
             ]

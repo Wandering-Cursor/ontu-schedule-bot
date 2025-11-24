@@ -89,6 +89,14 @@ def start_pattern(callback_data):
     return False
 
 
+def get_week_schedule_pattern(callback_data):
+    """Pattern for get_week_schedule"""
+    if isinstance(callback_data, tuple):
+        if callback_data[0] == "get_week_schedule":
+            return True
+    return False
+
+
 def get_schedule_pattern(callback_data):
     """Pattern for get_schedule"""
     if isinstance(callback_data, tuple):

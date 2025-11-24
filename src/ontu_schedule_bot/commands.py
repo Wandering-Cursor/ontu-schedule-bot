@@ -451,8 +451,6 @@ async def get_today_schedule(
     if not telegram_chat:
         raise RuntimeError("No chat in update")
 
-    client = get_current_client()
-
     chat = await get_chat_info(update=update)
 
     today = utils.current_time_in_kiev().date()
