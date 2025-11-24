@@ -1,9 +1,11 @@
 import datetime
 import json
 import logging
-from typing import Generator
+from collections.abc import Generator
+
 import httpx
 import pydantic
+
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.schemas import (
     Chat,
@@ -20,7 +22,6 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     TeacherPaginatedResponse,
     WeekSchedule,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class AdminClient:
     def get_chat(self, chat_id: str) -> Chat:
         response = self.client.get(url=f"/chat/{chat_id}")
 
-        if response.status_code != 200:
+        if response.status_code != httpx.codes.OK:
             response.raise_for_status()
 
         return Chat.model_validate(response.json())
@@ -59,7 +60,7 @@ class AdminClient:
             json=chat_info.model_dump(),
         )
 
-        if response.status_code not in [200, 201]:
+        if response.status_code not in [httpx.codes.OK, httpx.codes.CREATED]:
             response.raise_for_status()
 
         return Chat.model_validate(response.json())
@@ -68,7 +69,7 @@ class AdminClient:
         try:
             chat = self.get_chat(chat_info.platform_chat_id)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
+            if e.response.status_code == httpx.codes.NOT_FOUND:
                 chat = self.create_chat(chat_info)
             else:
                 raise
@@ -156,15 +157,15 @@ class AdminClient:
         ) as response:
             for chunk in response.iter_bytes():
                 if chunk.startswith(b",\n"):
-                    chunk = chunk[2:]
+                    chunk = chunk[2:]  # noqa: PLW2901
                 if chunk.endswith(b","):
-                    chunk = chunk[:-1]
+                    chunk = chunk[:-1]  # noqa: PLW2901
 
                 if chunk.find(b']},\n{"') != -1:
-                    chunk = b"[" + chunk + b"]"
+                    chunk = b"[" + chunk + b"]"  # noqa: PLW2901
 
                 if chunk.endswith(b"]]"):
-                    chunk = chunk[:-1]
+                    chunk = chunk[:-1]  # noqa: PLW2901
 
                 try:
                     data = json.loads(chunk)
@@ -177,9 +178,7 @@ class AdminClient:
                 for item in data:
                     yield {
                         key: [
-                            DaySchedule.model_validate(item)
-                            if item is not None
-                            else None
+                            DaySchedule.model_validate(item) if item is not None else None
                             for item in value
                         ]
                         for key, value in item.items()
@@ -215,9 +214,7 @@ class AdminClient:
             for item in response.json()
         ]
 
-    def schedule_day(
-        self, chat_id: str, date: datetime.date
-    ) -> list[DaySchedule | None]:
+    def schedule_day(self, chat_id: str, date: datetime.date) -> list[DaySchedule | None]:
         response = self.client.get(
             f"/chat/schedule/day/{date.isoformat()}",
             headers={

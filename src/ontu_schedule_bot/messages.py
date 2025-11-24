@@ -1,4 +1,5 @@
 import datetime
+
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 
 from ontu_schedule_bot import utils
@@ -35,20 +36,19 @@ async def edit_or_reply(
     text: str,
     reply_markup: InlineKeyboardMarkup | None = None,
 ) -> Message:
-    if query := update.callback_query:
-        if update_message := query.message:
-            if update_message.is_accessible:
-                assert isinstance(update_message, Message)
+    if query := update.callback_query:  # noqa: SIM102
+        if (update_message := query.message) and update_message.is_accessible:
+            assert isinstance(update_message, Message)
 
-                result = await update_message.edit_text(
-                    text=text,
-                    reply_markup=reply_markup,
-                )
+            result = await update_message.edit_text(
+                text=text,
+                reply_markup=reply_markup,
+            )
 
-                if isinstance(result, bool):
-                    raise RuntimeError("Edited a non-bot message")
+            if isinstance(result, bool):
+                raise RuntimeError("Edited a non-bot message")
 
-                return result
+            return result
 
     if update.effective_message:
         return await update.effective_message.reply_html(
@@ -77,9 +77,7 @@ async def start_command(
     if subscription.groups or subscription.teachers:
         keyboard.append(
             [
-                InlineKeyboardButton(
-                    "Оновити підписку ✏️", callback_data=("manage_subscription",)
-                ),
+                InlineKeyboardButton("Оновити підписку ✏️", callback_data=("manage_subscription",)),
             ]
         )
         keyboard.append(
@@ -104,7 +102,7 @@ async def start_command(
         if subscription.teachers:
             subscription_text += (
                 "Ви підписані на розклад для викладачів\n"
-                f"(пр. {', '.join([teacher.short_name for teacher in subscription.teachers[:2]])})\n"
+                f"(пр. {', '.join([teacher.short_name for teacher in subscription.teachers[:2]])})\n"  # noqa: E501
             )
     else:
         # Replace with subscription management (add/remove groups/teachers)
@@ -137,9 +135,7 @@ async def manage_subscription(
     """
     keyboard = [
         [
-            InlineKeyboardButton(
-                "Керувати групами 🫂", callback_data=("manage_groups", chat)
-            ),
+            InlineKeyboardButton("Керувати групами 🫂", callback_data=("manage_groups", chat)),
         ],
         [
             InlineKeyboardButton(
@@ -147,9 +143,7 @@ async def manage_subscription(
             ),
         ],
         [
-            InlineKeyboardButton(
-                "Повернутися в головне меню 🔙", callback_data=("start", chat)
-            ),
+            InlineKeyboardButton("Повернутися в головне меню 🔙", callback_data=("start", chat)),
         ],
     ]
 
@@ -182,7 +176,8 @@ async def manage_subscription_groups(
     keyboard.append(
         [
             InlineKeyboardButton(
-                "Додати групу ➕", callback_data=("add_subscription_group", chat)
+                "Додати групу ➕",  # noqa: RUF001
+                callback_data=("add_subscription_group", chat),
             ),
         ]
     )
@@ -198,9 +193,7 @@ async def manage_subscription_groups(
     subscription_text = "Ви не підписані на жодну групу"
     if subscription.groups:
         subscription_text = "Ви підписані на розклад для груп:\n"
-        subscription_text += "\n".join(
-            [f"- {group.as_string()}" for group in subscription.groups]
-        )
+        subscription_text += "\n".join([f"- {group.as_string()}" for group in subscription.groups])
 
     await edit_or_reply(
         update=update,
@@ -231,7 +224,8 @@ async def manage_subscription_teachers(
     keyboard.append(
         [
             InlineKeyboardButton(
-                "Додати викладача ➕", callback_data=("add_subscription_teacher", chat)
+                "Додати викладача ➕",  # noqa: RUF001
+                callback_data=("add_subscription_teacher", chat),
             ),
         ]
     )
@@ -568,10 +562,14 @@ async def send_pair_details(
 
     start_time, end_time = utils.get_pair_time_bounds(pair.number)
 
-    text = f"Деталі заняття №{pair.number} ({start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}) від {utils.get_weekday_name(day_schedule.date)} ({day_schedule.date.strftime('%d.%m')}):\n\n"
+    text = (
+        f"Деталі заняття №{pair.number} ({start_time.strftime('%H:%M')} - "
+        f"{end_time.strftime('%H:%M')}) від {utils.get_weekday_name(day_schedule.date)} "
+        f"({day_schedule.date.strftime('%d.%m')}):\n\n"
+    )
 
     for lesson in lessons:
-        text += f"{lesson.as_string(format='full')}\n\n"
+        text += f"{lesson.as_string(string_format='full')}\n\n"
 
     keyboard_markup = InlineKeyboardMarkup(
         [
@@ -606,10 +604,14 @@ async def send_pair_details_with_bot(
 
     start_time, end_time = utils.get_pair_time_bounds(pair.number)
 
-    text = f"Деталі заняття №{pair.number} ({start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}) від {utils.get_weekday_name(day_schedule.date)} ({day_schedule.date.strftime('%d.%m')}):\n\n"
+    text = (
+        f"Деталі заняття №{pair.number} ({start_time.strftime('%H:%M')} "
+        f"- {end_time.strftime('%H:%M')}) від {utils.get_weekday_name(day_schedule.date)} "
+        f"({day_schedule.date.strftime('%d.%m')}):\n\n"
+    )
 
     for lesson in lessons:
-        text += f"{lesson.as_string(format='full')}\n\n"
+        text += f"{lesson.as_string(string_format='full')}\n\n"
 
     keyboard_markup = InlineKeyboardMarkup(
         [
@@ -639,7 +641,10 @@ async def send_day_schedule(
     day_schedule: "DaySchedule",
 ) -> None:
     """Gets day schedule from admin service"""
-    text = f"Розклад на  {utils.get_weekday_name(day_schedule.date)} ({day_schedule.date.strftime('%d.%m')}) для {day_schedule.for_entity}:\n\n"
+    text = (
+        f"Розклад на {utils.get_weekday_name(day_schedule.date)} "
+        f"({day_schedule.date.strftime('%d.%m')}) для {day_schedule.for_entity}:\n\n"
+    )
 
     keyboard = []
 
@@ -650,7 +655,7 @@ async def send_day_schedule(
         pair_row = []
 
         for lesson in pair.lessons:
-            text += f"{pair.number}. {lesson.as_string(format='short')}\n"
+            text += f"{pair.number}. {lesson.as_string(string_format='short')}\n"
             pair_row.append(
                 InlineKeyboardButton(
                     text=f"{pair.number}. {lesson.short_name}",
@@ -685,7 +690,7 @@ async def send_no_classes_message(
     date: datetime.date,
 ) -> None:
     """Sends a message indicating no classes are scheduled for the given date."""
-    text = f"Не знайдено жодних занять на {date.strftime('%d.%m.%Y')}."
+    text = f"Не знайдено жодних занять на {date.strftime('%d.%m.%Y')}."  # noqa: RUF001
 
     await edit_or_reply(
         update=update,
@@ -706,7 +711,7 @@ async def send_week_schedule(
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    text=f"{utils.get_weekday_name(day_schedule.date)} - {day_schedule.date.strftime('%d.%m')}",
+                    text=f"{utils.get_weekday_name(day_schedule.date)} - {day_schedule.date.strftime('%d.%m')}",  # noqa: E501
                     callback_data=(
                         "get_schedule",
                         day_schedule,

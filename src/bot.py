@@ -6,12 +6,12 @@ import os
 
 import pytz
 from telegram.ext import (
+    AIORateLimiter,
     Application,
     CallbackQueryHandler,
     CommandHandler,
     JobQueue,
     PicklePersistence,
-    AIORateLimiter,
 )
 
 from ontu_schedule_bot import commands, patterns
@@ -26,7 +26,7 @@ logging.basicConfig(
     level=logging.INFO,
     handlers=[
         logging.FileHandler(
-            filename=f"logs/debug_{datetime.datetime.now().isoformat().replace(':', '_')}.log",
+            filename=f"logs/debug_{datetime.datetime.now(tz=pytz.UTC).isoformat().replace(':', '_')}.log",  # noqa: E501
             mode="w",
             encoding="UTF-8",
         ),
@@ -44,8 +44,8 @@ def main() -> None:
         Application.builder()
         .token(settings.BOT_TOKEN.get_secret_value())
         .persistence(persistence)
-        .arbitrary_callback_data(True)
-        .concurrent_updates(True)
+        .arbitrary_callback_data(True)  # noqa: FBT003
+        .concurrent_updates(True)  # noqa: FBT003
         .rate_limiter(
             AIORateLimiter(
                 max_retries=5,
@@ -189,12 +189,12 @@ def main() -> None:
         )
     )
 
-    application.add_handler(
-        CommandHandler(
-            command="manual_batch_pair_check",
-            callback=commands.manual_batch_pair_check,
-        )
-    )
+    # application.add_handler(
+    #     CommandHandler(
+    #         command="manual_batch_pair_check",
+    #         callback=commands.manual_batch_pair_check,
+    #     )
+    # )
 
     if not isinstance(application.job_queue, JobQueue):
         logger.error("Application doesn't have job_queue")
@@ -202,7 +202,7 @@ def main() -> None:
 
     for _pair, start_time in PAIR_START_TIME.items():
         # Convert time to datetime, subtract 10 minutes, then back to time
-        temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)
+        temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011
         temp_datetime -= datetime.timedelta(minutes=10)
         adjusted_time = temp_datetime.time()
 
