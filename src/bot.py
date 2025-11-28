@@ -18,7 +18,9 @@ from ontu_schedule_bot import commands, patterns
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.utils import PAIR_START_TIME
 
-os.makedirs("logs", exist_ok=True)
+LOG_DIR = settings.LOG_DIR
+
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # Enable logging
 logging.basicConfig(
@@ -26,7 +28,7 @@ logging.basicConfig(
     level=logging.INFO,
     handlers=[
         logging.FileHandler(
-            filename=f"logs/debug_{datetime.datetime.now(tz=pytz.UTC).isoformat().replace(':', '_')}.log",  # noqa: E501
+            filename=f"{LOG_DIR}/debug_{datetime.datetime.now(tz=pytz.UTC).isoformat().replace(':', '_')}.log",  # noqa: E501
             mode="w",
             encoding="UTF-8",
         ),
@@ -38,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Start the bot"""
-    persistence = PicklePersistence(filepath="persistance_cache")
+    persistence = PicklePersistence(filepath=settings.PERSISTENCE_FILEPATH)
 
     application = (
         Application.builder()
