@@ -19,5 +19,7 @@ class Settings(BaseSettings):
 
     DEBUG_CHAT_ID: int
 
+    LOG_DIR = "/tmp/ontu_schedule_bot_logs"
+
 
 settings = Settings()
