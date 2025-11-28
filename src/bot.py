@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Start the bot"""
-    persistence = PicklePersistence(filepath="persistance_cache")
+    persistence = PicklePersistence(filepath=settings.PERSISTENCE_FILEPATH)
 
     application = (
         Application.builder()

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     DEBUG_CHAT_ID: int
 
     LOG_DIR: str = "/tmp/ontu_schedule_bot_logs"
+    PERSISTENCE_FILEPATH: str = "/tmp/ontu_schedule_bot_persistence"
 
 
 settings = Settings()
