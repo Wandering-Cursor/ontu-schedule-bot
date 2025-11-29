@@ -793,3 +793,16 @@ async def error_handler(
         context=context,
         message=message,
     )
+
+    if isinstance(update, Update) and update.effective_chat:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "Виникла помилка при обробці вашого запиту.\nСпробуйте його повторити, однак, "  # noqa: RUF001
+                "якщо це не допоможе, то адміністратори вже повідомлені і працюють над усуненням "  # noqa: RUF001
+                "проблем.\nВибачте за незручності.\n\n"  # noqa: RUF001
+                "Якщо ви хочете уточнити щось по своїй проблемі (наприклад - додати інформацію) "
+                f'вкажіть наступну інформацію: <code>"update_id": {update.update_id}</code>'
+            ),
+            parse_mode=ParseMode.HTML,
+        )

@@ -707,11 +707,33 @@ async def send_week_schedule(
     """
     keyboard = []
 
+    def get_button_name(day: "DaySchedule") -> str:
+        day_info = f"{utils.get_weekday_name(day.date)} - {day.date.strftime('%d.%m')}"
+
+        pairs_with_lessons = 0
+        first_pair_with_lesson = None
+        last_pair_with_lesson = None
+        for pair in day.pairs:
+            if pair.lessons:
+                pairs_with_lessons += 1
+                if first_pair_with_lesson is None:
+                    first_pair_with_lesson = pair.number
+                last_pair_with_lesson = pair.number
+
+        if pairs_with_lessons == 0:
+            pair_info = "(немає пар)"
+        else:
+            pair_info = (
+                f"({pairs_with_lessons} пар: {first_pair_with_lesson}-{last_pair_with_lesson})"
+            )
+
+        return f"{day_info} {pair_info}"
+
     for day_schedule in week_schedule.days:
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    text=f"{utils.get_weekday_name(day_schedule.date)} - {day_schedule.date.strftime('%d.%m')}",  # noqa: E501
+                    text=get_button_name(day_schedule),
                     callback_data=(
                         "get_schedule",
                         day_schedule,
