@@ -154,6 +154,7 @@ class AdminClient:
         with self.client.stream(
             method="GET",
             url="/chat/bulk/schedule",
+            timeout=httpx.Timeout(600.0),
         ) as response:
             for chunk in response.iter_bytes():
                 if chunk.startswith(b",\n"):
