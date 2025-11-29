@@ -221,7 +221,11 @@ def main() -> None:
             },
         )
 
-    application.run_polling(drop_pending_updates=True)
+    # Add choice between webhook and polling later
+    application.run_polling(
+        drop_pending_updates=True,
+        bootstrap_retries=5,
+    )
 
 
 if __name__ == "__main__":
