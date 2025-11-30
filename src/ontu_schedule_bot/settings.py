@@ -22,5 +22,7 @@ class Settings(BaseSettings):
     LOG_DIR: str = "/tmp/ontu_schedule_bot_logs"
     PERSISTENCE_FILEPATH: str = "/tmp/ontu_schedule_bot_persistence"
 
+    WEBHOOK_URL: pydantic.HttpUrl | None = None
+
 
 settings = Settings()
