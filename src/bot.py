@@ -222,10 +222,17 @@ def main() -> None:
         )
 
     # Add choice between webhook and polling later
-    application.run_polling(
-        drop_pending_updates=True,
-        bootstrap_retries=5,
-    )
+    if settings.WEBHOOK_URL is None:
+        application.run_polling(
+            drop_pending_updates=True,
+            bootstrap_retries=5,
+        )
+    else:
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=int(os.environ.get("PORT", "443")),
+            webhook_url=str(settings.WEBHOOK_URL),
+        )
 
 
 if __name__ == "__main__":
