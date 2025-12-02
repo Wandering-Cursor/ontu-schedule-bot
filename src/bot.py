@@ -202,24 +202,25 @@ def main() -> None:
         logger.error("Application doesn't have job_queue")
         return
 
-    for _pair, start_time in PAIR_START_TIME.items():
-        # Convert time to datetime, subtract 10 minutes, then back to time
-        temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011
-        temp_datetime -= datetime.timedelta(minutes=10)
-        adjusted_time = temp_datetime.time()
+    if settings.RUN_PERIODIC_JOBS:
+        for _pair, start_time in PAIR_START_TIME.items():
+            # Convert time to datetime, subtract 10 minutes, then back to time
+            temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011
+            temp_datetime -= datetime.timedelta(minutes=10)
+            adjusted_time = temp_datetime.time()
 
-        application.job_queue.run_daily(
-            commands.batch_pair_check,
-            time=datetime.time(
-                hour=adjusted_time.hour,
-                minute=adjusted_time.minute,
-                tzinfo=pytz.timezone("Europe/Kyiv"),
-            ),
-            days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
-            job_kwargs={
-                "misfire_grace_time": None,
-            },
-        )
+            application.job_queue.run_daily(
+                commands.batch_pair_check,
+                time=datetime.time(
+                    hour=adjusted_time.hour,
+                    minute=adjusted_time.minute,
+                    tzinfo=pytz.timezone("Europe/Kyiv"),
+                ),
+                days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
+                job_kwargs={
+                    "misfire_grace_time": None,
+                },
+            )
 
     # Add choice between webhook and polling later
     if settings.WEBHOOK_URL is None:

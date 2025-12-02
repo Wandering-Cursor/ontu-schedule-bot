@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     PERSISTENCE_FILEPATH: str = "/tmp/ontu_schedule_bot_persistence"
 
     WEBHOOK_URL: pydantic.HttpUrl | None = None
+    RUN_PERIODIC_JOBS: bool = True
 
 
 settings = Settings()
