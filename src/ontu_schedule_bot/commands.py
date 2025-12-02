@@ -9,6 +9,7 @@ import time
 import traceback
 from typing import Literal
 
+import telegram.error
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
@@ -665,13 +666,19 @@ async def process_record(
                     continue
 
                 if pair.lessons:
-                    await messages.send_pair_details_with_bot(
-                        bot=context.bot,
-                        chat_id=chat_id,
-                        message_thread_id=message_thread_id,
-                        pair=pair,
-                        day_schedule=schedule,
-                    )
+                    try:
+                        await messages.send_pair_details_with_bot(
+                            bot=context.bot,
+                            chat_id=chat_id,
+                            message_thread_id=message_thread_id,
+                            pair=pair,
+                            day_schedule=schedule,
+                        )
+                    except telegram.error.Forbidden as e:
+                        logger.warning(
+                            f"Cannot send message to chat {chat_id} "
+                            f"(message_thread_id={message_thread_id}): {e}",
+                        )
                 else:
                     # Only send the next upcoming pair for each schedule
                     break
