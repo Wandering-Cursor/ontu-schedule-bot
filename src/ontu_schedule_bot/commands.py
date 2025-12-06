@@ -679,9 +679,8 @@ async def process_record(
                             f"Cannot send message to chat {chat_id} "
                             f"(message_thread_id={message_thread_id}): {e}",
                         )
-                else:
-                    # Only send the next upcoming pair for each schedule
-                    break
+                # Only send the next upcoming pair for each schedule
+                break
 
 
 async def batch_pair_check(
