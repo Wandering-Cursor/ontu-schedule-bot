@@ -16,6 +16,7 @@ from telegram.ext import (
 
 from ontu_schedule_bot import commands, patterns
 from ontu_schedule_bot.settings import settings
+from ontu_schedule_bot.third_party.persistence.redis import RedisPersistence
 from ontu_schedule_bot.utils import PAIR_START_TIME
 
 LOG_DIR = settings.LOG_DIR
@@ -40,7 +41,14 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Start the bot"""
-    persistence = PicklePersistence(filepath=settings.PERSISTENCE_FILEPATH)
+    if not settings.CACHE_URL:
+        persistence = PicklePersistence(filepath=settings.PERSISTENCE_FILEPATH)
+    else:
+        persistence = RedisPersistence(
+            redis_client=RedisPersistence.create_redis_client(
+                url=settings.CACHE_URL,
+            ),
+        )
 
     application = (
         Application.builder()

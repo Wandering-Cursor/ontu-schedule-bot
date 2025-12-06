@@ -25,5 +25,7 @@ class Settings(BaseSettings):
     WEBHOOK_URL: pydantic.HttpUrl | None = None
     RUN_PERIODIC_JOBS: bool = True
 
+    CACHE_URL: pydantic.RedisDsn | None = None
+
 
 settings = Settings()
