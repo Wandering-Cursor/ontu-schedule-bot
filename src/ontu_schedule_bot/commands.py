@@ -9,6 +9,7 @@ import time
 import traceback
 from typing import Literal
 
+import httpx
 import telegram.error
 from telegram import Update
 from telegram.constants import ParseMode
@@ -800,15 +801,30 @@ async def error_handler(
         message=message,
     )
 
+    message_detail = (
+        "Виникла помилка при обробці вашого запиту.\nСпробуйте його повторити, однак, "  # noqa: RUF001
+        "якщо це не допоможе, то адміністратори вже повідомлені і працюють над усуненням "  # noqa: RUF001
+        "проблем.\nВибачте за незручності.\n\n"  # noqa: RUF001
+    )
+
+    if (
+        isinstance(context.error, httpx.HTTPStatusError)
+        and context.error.response.status_code == httpx.codes.SERVICE_UNAVAILABLE
+    ):
+        message_detail += (
+            "Схоже на те, що сервіс розкладу тимчасово недоступний.\n"
+            "Ви можете це перевірити, перейшовши за посиланням:\n"
+            "https://rozklad.ontu.edu.ua\n\n"
+        )
+
     if isinstance(update, Update) and update.effective_chat:
+        message_detail += (
+            "Якщо ви хочете уточнити щось по своїй проблемі (наприклад - додати інформацію) "
+            f'вкажіть наступну інформацію: <code>"update_id": {update.update_id}</code>'
+        )
+
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=(
-                "Виникла помилка при обробці вашого запиту.\nСпробуйте його повторити, однак, "  # noqa: RUF001
-                "якщо це не допоможе, то адміністратори вже повідомлені і працюють над усуненням "  # noqa: RUF001
-                "проблем.\nВибачте за незручності.\n\n"  # noqa: RUF001
-                "Якщо ви хочете уточнити щось по своїй проблемі (наприклад - додати інформацію) "
-                f'вкажіть наступну інформацію: <code>"update_id": {update.update_id}</code>'
-            ),
+            text=message_detail,
             parse_mode=ParseMode.HTML,
         )

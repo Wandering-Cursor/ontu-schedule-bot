@@ -26,6 +26,23 @@ from ontu_schedule_bot.third_party.admin.schemas import (
 logger = logging.getLogger(__name__)
 
 
+def reraise_for_status(response: httpx.Response) -> None:
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        logger.error(
+            "HTTP error occurred: %s; response text:\n%s",
+            e,
+            response.text,
+        )
+
+        raise httpx.HTTPStatusError(
+            message=e.args[0] + f"; response text:\n{response.text[:128]}",
+            request=e.request,
+            response=e.response,
+        ) from e
+
+
 class AdminClient:
     def __init__(self) -> None:
         self.api_url = settings.API_URL
@@ -50,7 +67,7 @@ class AdminClient:
         response = self.client.get(url=f"/chat/{chat_id}")
 
         if response.status_code != httpx.codes.OK:
-            response.raise_for_status()
+            reraise_for_status(response)
 
         return Chat.model_validate(response.json())
 
@@ -61,7 +78,7 @@ class AdminClient:
         )
 
         if response.status_code not in [httpx.codes.OK, httpx.codes.CREATED]:
-            response.raise_for_status()
+            reraise_for_status(response)
 
         return Chat.model_validate(response.json())
 
@@ -84,7 +101,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return Subscription.model_validate(response.json())
 
@@ -96,7 +113,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return Subscription.model_validate(response.json())
 
@@ -108,7 +125,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return Subscription.model_validate(response.json())
 
@@ -120,7 +137,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return Subscription.model_validate(response.json())
 
@@ -132,7 +149,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return Subscription.model_validate(response.json())
 
@@ -144,7 +161,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return Subscription.model_validate(response.json())
 
@@ -193,7 +210,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return [
             DaySchedule.model_validate(item) if item is not None else None
@@ -208,7 +225,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return [
             DaySchedule.model_validate(item) if item is not None else None
@@ -223,7 +240,7 @@ class AdminClient:
             },
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return [
             DaySchedule.model_validate(item) if item is not None else None
@@ -238,11 +255,7 @@ class AdminClient:
             },
         )
 
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            logger.warning("Error fetching week schedule: %s", e.response.text)
-            raise e
+        reraise_for_status(response)
 
         return [WeekSchedule.model_validate(item) for item in response.json()]
 
@@ -256,7 +269,7 @@ class AdminClient:
             ).model_dump(),
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         data = FacultyPaginatedResponse.model_validate(response.json())
 
@@ -280,7 +293,7 @@ class AdminClient:
             ).model_dump(),
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return GroupPaginatedResponse.model_validate(response.json())
 
@@ -294,7 +307,7 @@ class AdminClient:
             ).model_dump(),
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         data = DepartmentPaginatedResponse.model_validate(response.json())
 
@@ -318,6 +331,6 @@ class AdminClient:
             ).model_dump(),
         )
 
-        response.raise_for_status()
+        reraise_for_status(response)
 
         return TeacherPaginatedResponse.model_validate(response.json())
