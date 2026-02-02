@@ -16,6 +16,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from ontu_schedule_bot import messages, utils
+from ontu_schedule_bot.errors import SubscriptionNotFoundError
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
 from ontu_schedule_bot.third_party.admin.enums import Platform
@@ -125,7 +126,10 @@ async def start_command(
         )
     )
 
-    subscription = client.get_subscription(chat_id=chat.platform_chat_id)
+    try:
+        subscription = client.get_subscription(chat_id=chat.platform_chat_id)
+    except SubscriptionNotFoundError:
+        subscription = client.create_subscription(chat_id=chat.platform_chat_id)
 
     await messages.start_command(
         update=update,
