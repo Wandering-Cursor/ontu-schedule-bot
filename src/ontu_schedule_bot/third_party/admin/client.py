@@ -6,6 +6,7 @@ from collections.abc import Generator
 import httpx
 import pydantic
 
+from ontu_schedule_bot.errors import SubscriptionNotFoundError
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.schemas import (
     Chat,
@@ -93,6 +94,18 @@ class AdminClient:
 
         return chat
 
+    def create_subscription(self, chat_id: str) -> Subscription:
+        response = self.client.post(
+            "/chat/subscription/",
+            headers={
+                "X-Chat-ID": chat_id,
+            },
+        )
+
+        reraise_for_status(response)
+
+        return Subscription.model_validate(response.json())
+
     def get_subscription(self, chat_id: str) -> Subscription:
         response = self.client.get(
             "/chat/subscription/info",
@@ -100,6 +113,12 @@ class AdminClient:
                 "X-Chat-ID": chat_id,
             },
         )
+
+        if response.status_code == httpx.codes.NOT_FOUND:
+            raise SubscriptionNotFoundError(
+                response=response,
+                chat_id=chat_id,
+            )
 
         reraise_for_status(response)
 
