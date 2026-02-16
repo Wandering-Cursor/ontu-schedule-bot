@@ -749,6 +749,7 @@ async def send_message_campaign(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
+    """Handles the request from Admin to send a message campaign by adding a queued job"""
     if not update.message:
         return
 
@@ -787,6 +788,7 @@ async def send_message_campaign(
 async def send_messages_for_campaign(
     context: CallbackContext,
 ) -> None:
+    """Job that is ran in a queue"""
     if not context.job:
         return
 
@@ -838,6 +840,8 @@ async def send_message_to_debug_chat(
 ) -> None:
     """Sends a message to the debug chat"""
     chunks = [message]
+    # Limitting to 3000 characters to accomodate
+    # overhead of HTML formatting
     chunks = utils.split_message(message, 3000)
 
     for text in chunks:
