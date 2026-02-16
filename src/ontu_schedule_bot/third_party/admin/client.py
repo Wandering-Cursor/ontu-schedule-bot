@@ -18,6 +18,7 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     FacultyPaginatedResponse,
     GroupPaginatedRequest,
     GroupPaginatedResponse,
+    MessageCampaign,
     Subscription,
     TeacherPaginatedRequest,
     TeacherPaginatedResponse,
@@ -353,3 +354,13 @@ class AdminClient:
         reraise_for_status(response)
 
         return TeacherPaginatedResponse.model_validate(response.json())
+
+    def read_message_campaign(
+        self,
+        message_campaign_id: pydantic.UUID4,
+    ) -> MessageCampaign:
+        response = self.client.get(f"/chat/message_campaign/{message_campaign_id}")
+
+        reraise_for_status(response)
+
+        return MessageCampaign.model_validate(response.json())

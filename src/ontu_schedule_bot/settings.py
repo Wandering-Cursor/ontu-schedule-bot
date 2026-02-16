@@ -1,10 +1,14 @@
 """This module loads (or sets) secrets for the bot (API_TOKEN, API_URL...)"""
 
 import pydantic
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+    )
+
     BOT_TOKEN: pydantic.SecretStr = pydantic.Field(
         min_length=1,
     )
@@ -26,4 +30,4 @@ class Settings(BaseSettings):
     RUN_PERIODIC_JOBS: bool = True
 
 
-settings = Settings()
+settings = Settings()  # pyright: ignore[reportCallIssue]

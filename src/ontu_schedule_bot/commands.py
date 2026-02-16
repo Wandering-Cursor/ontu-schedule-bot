@@ -8,15 +8,17 @@ import logging
 import time
 import traceback
 from typing import Literal
+from uuid import UUID
 
 import httpx
 import telegram.error
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from telegram.ext import CallbackContext, ContextTypes
 
 from ontu_schedule_bot import messages, utils
 from ontu_schedule_bot.errors import SubscriptionNotFoundError
+from ontu_schedule_bot.schemas import SendMessageCampaignDTO
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
 from ontu_schedule_bot.third_party.admin.enums import Platform
@@ -743,6 +745,69 @@ async def toggle_subscription(
     )
 
 
+async def send_message_campaign(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Handles the request from Admin to send a message campaign by adding a queued job"""
+    if not update.message:
+        return
+
+    if update.message.chat_id != settings.DEBUG_CHAT_ID:
+        return
+
+    arguments = (update.message.text or "").split()
+
+    if len(arguments) != 2:  # noqa: PLR2004
+        return
+
+    client = get_current_client()
+
+    message_campaign = client.read_message_campaign(message_campaign_id=UUID(arguments[1]))
+
+    if not context.application.job_queue:
+        return
+
+    await update.message.reply_text(
+        "Відправка повідомлення почнеться через 5 секунд.\n\n"
+        f"Відправка до {len(message_campaign.recipients)} отримувачів."
+    )
+
+    context.application.job_queue.run_once(
+        send_messages_for_campaign,
+        when=5,
+        data={
+            "name": message_campaign.name,
+            "payload": message_campaign.payload,
+            "recipients": message_campaign.recipients,
+        },
+        name=f"Send Message Campaign ({message_campaign.uuid})",
+    )
+
+
+async def send_messages_for_campaign(
+    context: CallbackContext,
+) -> None:
+    """Job that is ran in a queue"""
+    if not context.job:
+        return
+
+    data = SendMessageCampaignDTO.model_validate(context.job.data)
+
+    for recipient in data.recipients:
+        await context.bot.send_message(
+            chat_id=recipient.platform_chat_id,
+            text=f"Повідомлення: {data.name}\n\n{data.payload.get('message')}",
+            disable_notification=True,
+            parse_mode=ParseMode.HTML,
+        )
+
+    await context.bot.send_message(
+        chat_id=settings.DEBUG_CHAT_ID,
+        text="Розсилка компанії завершена.",
+    )
+
+
 def get_error_message_text(
     error: Exception,
     context: ContextTypes.DEFAULT_TYPE,
@@ -775,8 +840,9 @@ async def send_message_to_debug_chat(
 ) -> None:
     """Sends a message to the debug chat"""
     chunks = [message]
-    if len(message) > 4096:  # noqa: PLR2004
-        chunks = utils.split_message(message, 4000)
+    # Limitting to 3000 characters to accomodate
+    # overhead of HTML formatting
+    chunks = utils.split_message(message, 3000)
 
     for text in chunks:
         await context.bot.send_message(
