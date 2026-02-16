@@ -267,3 +267,13 @@ class TeacherPaginatedRequest(PaginatedRequest):
 
 class TeacherPaginatedResponse(PaginatedResponse[Teacher]):
     pass
+
+
+class MessageCampaign(Schema):
+    uuid: pydantic.UUID4
+
+    name: str
+    payload: pydantic.JsonValue
+    recipients: list[Chat]
+
+    created_at: datetime.datetime

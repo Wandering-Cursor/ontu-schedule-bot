@@ -166,6 +166,13 @@ def main() -> None:
     )
 
     application.add_handler(
+        CommandHandler(
+            "send_message_campaign",
+            commands.send_message_campaign,
+        )
+    )
+
+    application.add_handler(
         CallbackQueryHandler(
             callback=commands.get_week_schedule,
             pattern=patterns.get_week_schedule_pattern,
