@@ -795,12 +795,31 @@ async def send_messages_for_campaign(
     data = SendMessageCampaignDTO.model_validate(context.job.data)
 
     for recipient in data.recipients:
-        await context.bot.send_message(
-            chat_id=recipient.platform_chat_id,
-            text=f"Повідомлення: {data.name}\n\n{data.payload.get('message')}",
-            disable_notification=True,
-            parse_mode=ParseMode.HTML,
-        )
+        message_thread_id = None
+        chat_id = recipient.platform_chat_id
+
+        if ":" in chat_id:
+            chat_id, message_thread_id = chat_id.split(":")
+
+        try:
+            await context.bot.send_message(
+                chat_id=recipient.platform_chat_id,
+                message_thread_id=message_thread_id,
+                text=f"Повідомлення: {data.name}\n\n{data.payload.get('message')}",
+                disable_notification=True,
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception as e:  # noqa: BLE001
+            text = get_error_message_text(
+                e,
+                context=context,
+                base_error_message="Exception in campaign processing",
+            )
+            await send_message_to_debug_chat(
+                context=context,
+                message=text,
+            )
+            continue
 
     await context.bot.send_message(
         chat_id=settings.DEBUG_CHAT_ID,
