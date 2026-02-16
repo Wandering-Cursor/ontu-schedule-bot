@@ -757,6 +757,9 @@ async def send_message_campaign(
 
     arguments = (update.message.text or "").split()
 
+    if len(arguments) != 2:  # noqa: PLR2004
+        return
+
     client = get_current_client()
 
     message_campaign = client.read_message_campaign(message_campaign_id=UUID(arguments[1]))
