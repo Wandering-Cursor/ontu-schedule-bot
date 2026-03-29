@@ -1,9 +1,15 @@
 """This is a utils module, it contains Requests and pagination for bot"""
 
+import bz2
+import contextlib
 import datetime
+import json
 import re
+from base64 import b85decode, b85encode
+from collections.abc import Sequence
 
 import pytz
+from telegram.constants import InlineKeyboardButtonLimit
 
 
 def current_time_in_kiev() -> datetime.datetime:
@@ -161,3 +167,27 @@ def split_message(text: str, max_length: int = 4096) -> list[str]:  # noqa: C901
         chunks.append(remaining)
 
     return chunks
+
+
+def data_to_string(data: Sequence | str) -> str:
+    """Converts arbitrary data to a pattern string"""
+    data = json.dumps(data, default=str, separators=(",", ":"))
+    converted = (
+        bz2.compress(data.encode())
+        if len(data) > InlineKeyboardButtonLimit.MAX_CALLBACK_DATA
+        else data.encode()
+    )
+    encoded = b85encode(converted).decode()
+
+    if len(encoded) > InlineKeyboardButtonLimit.MAX_CALLBACK_DATA:
+        raise ValueError("Data is too large to encode in a pattern", data)
+
+    return encoded
+
+
+def string_to_data(pattern: str) -> Sequence | str:
+    """Converts pattern string back to data"""
+    data = b85decode(pattern.encode())
+    with contextlib.suppress(OSError):
+        data = bz2.decompress(data)
+    return json.loads(data.decode())

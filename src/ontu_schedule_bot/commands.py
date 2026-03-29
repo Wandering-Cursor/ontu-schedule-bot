@@ -18,6 +18,7 @@ from telegram.ext import CallbackContext, ContextTypes
 
 from ontu_schedule_bot import messages, utils
 from ontu_schedule_bot.errors import SubscriptionNotFoundError
+from ontu_schedule_bot.patterns import Patterns, SubscriptionItemType
 from ontu_schedule_bot.schemas import SendMessageCampaignDTO
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
@@ -135,7 +136,6 @@ async def start_command(
 
     await messages.start_command(
         update=update,
-        chat=chat,
         subscription=subscription,
     )
 
@@ -152,11 +152,8 @@ async def manage_subscription(
     """
     await messages.processing_update(update=update)
 
-    chat = await get_chat_info(update=update)
-
     await messages.manage_subscription(
         update=update,
-        chat=chat,
     )
 
 
@@ -175,7 +172,6 @@ async def manage_subscription_groups(
 
     await messages.manage_subscription_groups(
         update=update,
-        chat=chat,
         subscription=subscription,
     )
 
@@ -195,7 +191,6 @@ async def manage_subscription_teachers(
 
     await messages.manage_subscription_teachers(
         update=update,
-        chat=chat,
         subscription=subscription,
     )
 
@@ -212,7 +207,12 @@ async def remove_subscription_items(
     if not update.callback_query or not update.callback_query.data:
         raise ValueError("remove_subscription_items is designed for callbacks")
 
-    item_type: Literal["group", "teacher"] = update.callback_query.data[1]  # type: ignore
+    callback_data = Patterns.load(update.callback_query.data)
+
+    if len(callback_data) < 2:  # noqa: PLR2004
+        raise ValueError("Invalid callback data for remove_subscription_items")
+
+    item_type: SubscriptionItemType = SubscriptionItemType(callback_data[1])
 
     chat = await get_chat_info(update=update)
 
@@ -220,7 +220,6 @@ async def remove_subscription_items(
 
     await messages.remove_subscription_items(
         update=update,
-        chat=chat,
         subscription=subscription,
         item_type=item_type,
     )
@@ -238,29 +237,30 @@ async def remove_subscription_item(
     if not update.callback_query or not update.callback_query.data:
         raise ValueError("remove_subscription_item is designed for callbacks")
 
-    item_type: Literal["group", "teacher"] = update.callback_query.data[1]  # type: ignore
-    item: Teacher | Group = update.callback_query.data[2]  # type: ignore
+    callback_data = Patterns.load(update.callback_query.data)
+
+    item_type: SubscriptionItemType = SubscriptionItemType(callback_data[1])
+    item: UUID = callback_data[2]  # pyright: ignore[reportAssignmentType]
 
     chat = await get_chat_info(update=update)
 
     client = get_current_client()
 
-    if item_type == "group":
+    if item_type == SubscriptionItemType.GROUP:
         subscription = client.remove_group(
             chat_id=chat.platform_chat_id,
-            group_id=item.uuid,
+            group_id=item,
         )
-    elif item_type == "teacher":
+    elif item_type == SubscriptionItemType.TEACHER:
         subscription = client.remove_teacher(
             chat_id=chat.platform_chat_id,
-            teacher_id=item.uuid,
+            teacher_id=item,
         )
     else:
         raise RuntimeError("Unsupported item type")
 
     await messages.remove_subscription_items(
         update=update,
-        chat=chat,
         subscription=subscription,
         item_type=item_type,
     )
@@ -278,15 +278,12 @@ async def add_subscription_group(
     """
     await messages.processing_update(update=update)
 
-    chat = await get_chat_info(update=update)
-
     client = get_current_client()
 
     faculties = client.read_faculties()
 
     await messages.add_subscription_group(
         update=update,
-        chat=chat,
         faculties=faculties.items,
     )
 
@@ -303,15 +300,12 @@ async def add_subscription_teacher(
     """
     await messages.processing_update(update=update)
 
-    chat = await get_chat_info(update=update)
-
     client = get_current_client()
 
     departments = client.read_departments()
 
     await messages.add_subscription_teacher(
         update=update,
-        chat=chat,
         departments=departments.items,
     )
 
@@ -329,19 +323,21 @@ async def select_faculty(
     if not query or not query.message or not query.data:
         return
 
-    faculty: Faculty = query.data[1]  # type: ignore
-    page_number: int = query.data[2]  # type: ignore
+    query_data = Patterns.load(query.data)
+
+    faculty_id = UUID(query_data[1])  # pyright: ignore[reportArgumentType]
+    page_number: int = query_data[2]  # type: ignore
 
     client = get_current_client()
 
     groups = client.read_groups(
-        faculty_id=faculty.uuid,
+        faculty_id=faculty_id,
         page=page_number,
     )
 
     await messages.select_faculty(
         update=update,
-        faculty=faculty,
+        faculty_id=faculty_id,
         groups=groups,
     )
 
@@ -359,19 +355,21 @@ async def select_department(
     if not query or not query.message or not query.data:
         return
 
-    department: Department = query.data[1]  # type: ignore
-    page_number: int = query.data[2]  # type: ignore
+    query_data = Patterns.load(query.data)
+
+    department = UUID(query_data[1])  # pyright: ignore[reportArgumentType]
+    page_number: int = query_data[2]  # type: ignore
 
     client = get_current_client()
 
     teachers = client.read_teachers(
-        department_id=department.uuid,
+        department_id=department,
         page=page_number,
     )
 
     await messages.select_department(
         update=update,
-        department=department,
+        department_id=department,
         teachers=teachers,
     )
 
@@ -386,29 +384,30 @@ async def add_subscription_item(
     if not query or not query.message or not query.data:
         return None
 
-    item_type: Literal["group", "teacher"] = query.data[1]  # type: ignore
-    item: Group | Teacher = query.data[2]  # type: ignore
+    query_data = Patterns.load(query.data)
+
+    item_type: SubscriptionItemType = SubscriptionItemType(query_data[1])
+    item_id = UUID(query_data[2])  # pyright: ignore[reportArgumentType]
 
     chat = await get_chat_info(update=update)
 
     client = get_current_client()
 
-    if item_type == "group":
+    if item_type == SubscriptionItemType.GROUP:
         client.add_group(
             chat_id=chat.platform_chat_id,
-            group_id=item.uuid,
+            group_id=item_id,
         )
-    elif item_type == "teacher":
+    elif item_type == SubscriptionItemType.TEACHER:
         client.add_teacher(
             chat_id=chat.platform_chat_id,
-            teacher_id=item.uuid,
+            teacher_id=item_id,
         )
     else:
         raise RuntimeError("Unsupported item type")
 
     return await messages.manage_subscription(
         update=update,
-        chat=chat,
     )
 
 
@@ -740,7 +739,6 @@ async def toggle_subscription(
 
     await messages.start_command(
         update=update,
-        chat=chat,
         subscription=subscription,
     )
 

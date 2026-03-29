@@ -11,7 +11,6 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     JobQueue,
-    PicklePersistence,
 )
 
 from ontu_schedule_bot import commands, patterns
@@ -40,13 +39,9 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Start the bot"""
-    persistence = PicklePersistence(filepath=settings.PERSISTENCE_FILEPATH)
-
     application = (
         Application.builder()
         .token(settings.BOT_TOKEN.get_secret_value())
-        .persistence(persistence)
-        .arbitrary_callback_data(True)  # noqa: FBT003
         .concurrent_updates(True)  # noqa: FBT003
         .rate_limiter(
             AIORateLimiter(
@@ -198,18 +193,19 @@ def main() -> None:
         )
     )
 
-    # application.add_handler(
-    #     CommandHandler(
-    #         command="manual_batch_pair_check",
-    #         callback=commands.manual_batch_pair_check,
-    #     )
-    # )
-
-    if not isinstance(application.job_queue, JobQueue):
-        logger.error("Application doesn't have job_queue")
-        return
+    if settings.DEBUG:
+        application.add_handler(
+            CommandHandler(
+                command="manual_batch_pair_check",
+                callback=commands.manual_batch_pair_check,
+            )
+        )
 
     if settings.RUN_PERIODIC_JOBS:
+        if not isinstance(application.job_queue, JobQueue):
+            logger.error("Application doesn't have job_queue")
+            return
+
         for _pair, start_time in PAIR_START_TIME.items():
             # Convert time to datetime, subtract 10 minutes, then back to time
             temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011

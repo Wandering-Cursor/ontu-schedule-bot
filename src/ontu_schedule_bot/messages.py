@@ -1,8 +1,10 @@
 import datetime
+from uuid import UUID
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 
 from ontu_schedule_bot import utils
+from ontu_schedule_bot.patterns import Patterns, SubscriptionItemType
 from ontu_schedule_bot.third_party.admin.schemas import (
     Chat,
     DaySchedule,
@@ -68,7 +70,6 @@ async def edit_or_reply(
 
 async def start_command(
     update: "Update",
-    chat: "Chat",
     subscription: "Subscription",
 ) -> None:
     subscription_text = "Ви не підписані на розклад"
@@ -77,7 +78,10 @@ async def start_command(
     if subscription.groups or subscription.teachers:
         keyboard.append(
             [
-                InlineKeyboardButton("Оновити підписку ✏️", callback_data=("manage_subscription",)),
+                InlineKeyboardButton(
+                    "Оновити підписку ✏️",
+                    callback_data=Patterns.MANAGE_SUBSCRIPTION.with_args(),
+                ),
             ]
         )
         keyboard.append(
@@ -87,7 +91,7 @@ async def start_command(
                         "Отримувати повідомлення перед парою? "
                         f"{'✅' if subscription.is_active else '❌'}"
                     ),
-                    callback_data=("toggle_subscription", chat),
+                    callback_data=Patterns.TOGGLE_SUBSCRIPTION.with_args(),
                 )
             ]
         )
@@ -109,7 +113,8 @@ async def start_command(
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    "Налаштувати підписку ✏️", callback_data=("manage_subscription",)
+                    "Налаштувати підписку ✏️",
+                    callback_data=Patterns.MANAGE_SUBSCRIPTION.with_args(),
                 ),
             ]
         )
@@ -125,7 +130,6 @@ async def start_command(
 
 async def manage_subscription(
     update: "Update",
-    chat: "Chat",
 ) -> None:
     """
     Returns a list of options:
@@ -135,15 +139,22 @@ async def manage_subscription(
     """
     keyboard = [
         [
-            InlineKeyboardButton("Керувати групами 🫂", callback_data=("manage_groups", chat)),
-        ],
-        [
             InlineKeyboardButton(
-                "Керувати викладачами 👩‍🏫", callback_data=("manage_teachers", chat)
+                "Керувати групами 🫂",
+                callback_data=Patterns.MANAGE_GROUPS.with_args(),
             ),
         ],
         [
-            InlineKeyboardButton("Повернутися в головне меню 🔙", callback_data=("start", chat)),
+            InlineKeyboardButton(
+                "Керувати викладачами 👩‍🏫",
+                callback_data=Patterns.MANAGE_TEACHERS.with_args(),
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "Повернутися в головне меню 🔙",
+                callback_data=Patterns.START.with_args(),
+            ),
         ],
     ]
 
@@ -156,7 +167,6 @@ async def manage_subscription(
 
 async def manage_subscription_groups(
     update: "Update",
-    chat: "Chat",
     subscription: "Subscription",
 ) -> None:
     """
@@ -168,7 +178,9 @@ async def manage_subscription_groups(
         [
             InlineKeyboardButton(
                 text="Видалити групи 🗑️",
-                callback_data=("remove_subscription_items", "group", chat),
+                callback_data=Patterns.REMOVE_SUBSCRIPTION_ITEMS.with_args(
+                    SubscriptionItemType.GROUP,
+                ),
             ),
         ]
     )
@@ -177,7 +189,9 @@ async def manage_subscription_groups(
         [
             InlineKeyboardButton(
                 "Додати групу ➕",  # noqa: RUF001
-                callback_data=("add_subscription_group", chat),
+                callback_data=Patterns.ADD_SUBSCRIPTION_ITEM.with_args(
+                    SubscriptionItemType.GROUP,
+                ),
             ),
         ]
     )
@@ -185,7 +199,7 @@ async def manage_subscription_groups(
         [
             InlineKeyboardButton(
                 "Повернутися назад 🔙",
-                callback_data=("manage_subscription", chat),
+                callback_data=Patterns.MANAGE_SUBSCRIPTION.with_args(),
             ),
         ]
     )
@@ -204,7 +218,6 @@ async def manage_subscription_groups(
 
 async def manage_subscription_teachers(
     update: "Update",
-    chat: "Chat",
     subscription: "Subscription",
 ) -> None:
     """
@@ -216,7 +229,9 @@ async def manage_subscription_teachers(
         [
             InlineKeyboardButton(
                 text="Видалити викладачів 🗑️",
-                callback_data=("remove_subscription_items", "teacher", chat),
+                callback_data=Patterns.REMOVE_SUBSCRIPTION_ITEMS.with_args(
+                    SubscriptionItemType.TEACHER,
+                ),
             ),
         ]
     )
@@ -225,7 +240,9 @@ async def manage_subscription_teachers(
         [
             InlineKeyboardButton(
                 "Додати викладача ➕",  # noqa: RUF001
-                callback_data=("add_subscription_teacher", chat),
+                callback_data=Patterns.ADD_SUBSCRIPTION_ITEM.with_args(
+                    SubscriptionItemType.TEACHER
+                ),
             ),
         ]
     )
@@ -233,7 +250,7 @@ async def manage_subscription_teachers(
         [
             InlineKeyboardButton(
                 "Повернутися назад 🔙",
-                callback_data=("manage_subscription", chat),
+                callback_data=Patterns.MANAGE_SUBSCRIPTION.with_args(),
             ),
         ]
     )
@@ -254,9 +271,8 @@ async def manage_subscription_teachers(
 
 async def remove_subscription_items(
     update: "Update",
-    chat: "Chat",
     subscription: "Subscription",
-    item_type: str,
+    item_type: SubscriptionItemType,
 ) -> None:
     """
     Shows the list of active items (groups/teachers) in the subscription to remove.
@@ -264,18 +280,18 @@ async def remove_subscription_items(
     keyboard = []
 
     missing_items_translation = {
-        "group": "Ви не підписані на жодну групу",
-        "teacher": "Ви не підписані на жодного викладача",
+        SubscriptionItemType.GROUP: "Ви не підписані на жодну групу",
+        SubscriptionItemType.TEACHER: "Ви не підписані на жодного викладача",
     }
 
     items = []
     callback_data = ("error",)
-    if item_type == "group":
+    if item_type == SubscriptionItemType.GROUP:
         items = subscription.groups
-        callback_data = ("manage_groups", chat)
-    elif item_type == "teacher":
+        callback_data = Patterns.MANAGE_GROUPS.with_args()
+    elif item_type == SubscriptionItemType.TEACHER:
         items = subscription.teachers
-        callback_data = ("manage_teachers", chat)
+        callback_data = Patterns.MANAGE_TEACHERS.with_args()
 
     go_back_button = InlineKeyboardButton(
         "Повернутися назад 🔙",
@@ -295,11 +311,9 @@ async def remove_subscription_items(
             [
                 InlineKeyboardButton(
                     text=f"Видалити {item.as_string()} ❌",
-                    callback_data=(
-                        "remove_subscription_item",
+                    callback_data=Patterns.REMOVE_ITEM.with_args(
                         item_type,
-                        item,
-                        chat,
+                        item.uuid,
                     ),
                 ),
             ]
@@ -316,7 +330,6 @@ async def remove_subscription_items(
 
 async def add_subscription_group(
     update: "Update",
-    chat: "Chat",
     faculties: list["Faculty"],
 ) -> None:
     """
@@ -329,11 +342,9 @@ async def add_subscription_group(
             [
                 InlineKeyboardButton(
                     text=faculty.short_name,
-                    callback_data=(
-                        "select_faculty",
-                        faculty,
+                    callback_data=Patterns.SELECT_FACULTY.with_args(
+                        faculty.uuid,
                         1,  # Page number
-                        chat,
                     ),
                 ),
             ]
@@ -343,7 +354,7 @@ async def add_subscription_group(
         [
             InlineKeyboardButton(
                 "Повернутися назад 🔙",
-                callback_data=("manage_groups", chat),
+                callback_data=Patterns.MANAGE_GROUPS.with_args(),
             ),
         ]
     )
@@ -357,7 +368,6 @@ async def add_subscription_group(
 
 async def add_subscription_teacher(
     update: "Update",
-    chat: "Chat",
     departments: list["Department"],
 ) -> None:
     """
@@ -370,11 +380,9 @@ async def add_subscription_teacher(
             [
                 InlineKeyboardButton(
                     text=department.short_name,
-                    callback_data=(
-                        "select_department",
-                        department,
+                    callback_data=Patterns.SELECT_DEPARTMENT.with_args(
+                        department.uuid,
                         1,  # Page number
-                        chat,
                     ),
                 ),
             ]
@@ -384,7 +392,7 @@ async def add_subscription_teacher(
         [
             InlineKeyboardButton(
                 "Повернутися назад 🔙",
-                callback_data=("manage_teachers", chat),
+                callback_data=Patterns.MANAGE_TEACHERS.with_args(),
             ),
         ]
     )
@@ -398,7 +406,7 @@ async def add_subscription_teacher(
 
 async def select_faculty(
     update: "Update",
-    faculty: "Faculty",
+    faculty_id: "UUID",
     groups: GroupPaginatedResponse,
 ) -> None:
     """
@@ -411,11 +419,9 @@ async def select_faculty(
             [
                 InlineKeyboardButton(
                     text=group.short_name,
-                    callback_data=(
-                        "add_subscription_item",
-                        "group",
-                        group,
-                        update.effective_chat,
+                    callback_data=Patterns.ADD_SUBSCRIPTION_ITEM.with_args(
+                        SubscriptionItemType.GROUP,
+                        group.uuid,
                     ),
                 ),
             ]
@@ -427,11 +433,9 @@ async def select_faculty(
         pagination_row.append(
             InlineKeyboardButton(
                 "⬅️",
-                callback_data=(
-                    "select_faculty",
-                    faculty,
+                callback_data=Patterns.SELECT_FACULTY.with_args(
+                    faculty_id,
                     groups.meta.page - 1,
-                    update.effective_chat,
                 ),
             ),
         )
@@ -439,7 +443,7 @@ async def select_faculty(
     pagination_row.append(
         InlineKeyboardButton(
             f"{groups.meta.page}/{groups.meta.total_pages}",
-            callback_data=("noop",),
+            callback_data="noop",
         ),
     )
 
@@ -447,11 +451,9 @@ async def select_faculty(
         pagination_row.append(
             InlineKeyboardButton(
                 "➡️",
-                callback_data=(
-                    "select_faculty",
-                    faculty,
+                callback_data=Patterns.SELECT_FACULTY.with_args(
+                    faculty_id,
                     groups.meta.page + 1,
-                    update.effective_chat,
                 ),
             ),
         )
@@ -462,21 +464,24 @@ async def select_faculty(
         [
             InlineKeyboardButton(
                 "Повернутися назад 🔙",
-                callback_data=("add_subscription_group", update.effective_chat),
+                callback_data=Patterns.ADD_SUBSCRIPTION_ITEM.with_args(
+                    SubscriptionItemType.GROUP,
+                ),
             ),
         ]
     )
 
+    # FIXME: Get Faculty by it's ID to show its name here, instead of just showing the ID
     await edit_or_reply(
         update=update,
-        text=f"Оберіть групу факультету {faculty.short_name} для підписки:",
+        text=f"Оберіть групу факультету {faculty_id} для підписки:",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
 async def select_department(
     update: "Update",
-    department: "Department",
+    department_id: "UUID",
     teachers: TeacherPaginatedResponse,
 ) -> None:
     """
@@ -489,11 +494,9 @@ async def select_department(
             [
                 InlineKeyboardButton(
                     text=teacher.short_name,
-                    callback_data=(
-                        "add_subscription_item",
-                        "teacher",
-                        teacher,
-                        update.effective_chat,
+                    callback_data=Patterns.ADD_SUBSCRIPTION_ITEM.with_args(
+                        SubscriptionItemType.TEACHER,
+                        teacher.uuid,
                     ),
                 ),
             ]
@@ -505,11 +508,9 @@ async def select_department(
         pagination_row.append(
             InlineKeyboardButton(
                 "⬅️",
-                callback_data=(
-                    "select_department",
-                    department,
+                callback_data=Patterns.SELECT_DEPARTMENT.with_args(
+                    department_id,
                     teachers.meta.page - 1,
-                    update.effective_chat,
                 ),
             ),
         )
@@ -517,7 +518,7 @@ async def select_department(
     pagination_row.append(
         InlineKeyboardButton(
             f"{teachers.meta.page}/{teachers.meta.total_pages}",
-            callback_data=("noop",),
+            callback_data="noop",
         ),
     )
 
@@ -525,11 +526,9 @@ async def select_department(
         pagination_row.append(
             InlineKeyboardButton(
                 "➡️",
-                callback_data=(
-                    "select_department",
-                    department,
+                callback_data=Patterns.SELECT_DEPARTMENT.with_args(
+                    department_id,
                     teachers.meta.page + 1,
-                    update.effective_chat,
                 ),
             ),
         )
@@ -540,14 +539,17 @@ async def select_department(
         [
             InlineKeyboardButton(
                 "Повернутися назад 🔙",
-                callback_data=("add_subscription_teacher", update.effective_chat),
+                callback_data=Patterns.ADD_SUBSCRIPTION_ITEM.with_args(
+                    SubscriptionItemType.TEACHER,
+                ),
             ),
         ]
     )
 
+    # FIXME: Get Department by it's ID to show its name here, instead of just showing the ID
     await edit_or_reply(
         update=update,
-        text=f"Оберіть викладача кафедри {department.short_name} для підписки:",
+        text=f"Оберіть викладача кафедри {department_id} для підписки:",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
