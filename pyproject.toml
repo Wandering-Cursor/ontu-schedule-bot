@@ -1,14 +1,14 @@
 [project]
 name = "ontu-schedule-bot"
-version = "1.3.1"
-description = "Add your description here"
+version = "1.4.0"
+description = "A Telegram Bot to get ONTU schedule in your chats"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "python-telegram-bot[callback-data,rate-limiter,job-queue,webhooks]>=22.5,<23.0",
     "httpx>=0.28.1,<0.29.0",
     "pydantic-settings>=2.11.0",
-    "pytz>=2025.2",
+    "pytz>=2026.1",
 ]
 
 [dependency-groups]
