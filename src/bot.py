@@ -10,13 +10,10 @@ from telegram.ext import (
     Application,
     CallbackQueryHandler,
     CommandHandler,
-    JobQueue,
-    PicklePersistence,
 )
 
 from ontu_schedule_bot import commands, patterns
 from ontu_schedule_bot.settings import settings
-from ontu_schedule_bot.utils import PAIR_START_TIME
 
 LOG_DIR = settings.LOG_DIR
 
@@ -40,18 +37,17 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Start the bot"""
-    persistence = PicklePersistence(filepath=settings.PERSISTENCE_FILEPATH)
-
     application = (
         Application.builder()
         .token(settings.BOT_TOKEN.get_secret_value())
-        .persistence(persistence)
-        .arbitrary_callback_data(True)  # noqa: FBT003
         .concurrent_updates(True)  # noqa: FBT003
         .rate_limiter(
             AIORateLimiter(
                 max_retries=5,
             )
+        )
+        .post_init(
+            commands.post_init,
         )
         .build()
     )
@@ -139,6 +135,12 @@ def main() -> None:
             pattern=patterns.remove_subscription_item_pattern,
         )
     )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.noop_command,
+            pattern=patterns.noop_pattern,
+        )
+    )
 
     application.add_handler(
         CommandHandler(
@@ -198,36 +200,13 @@ def main() -> None:
         )
     )
 
-    # application.add_handler(
-    #     CommandHandler(
-    #         command="manual_batch_pair_check",
-    #         callback=commands.manual_batch_pair_check,
-    #     )
-    # )
-
-    if not isinstance(application.job_queue, JobQueue):
-        logger.error("Application doesn't have job_queue")
-        return
-
-    if settings.RUN_PERIODIC_JOBS:
-        for _pair, start_time in PAIR_START_TIME.items():
-            # Convert time to datetime, subtract 10 minutes, then back to time
-            temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011
-            temp_datetime -= datetime.timedelta(minutes=10)
-            adjusted_time = temp_datetime.time()
-
-            application.job_queue.run_daily(
-                commands.batch_pair_check,
-                time=datetime.time(
-                    hour=adjusted_time.hour,
-                    minute=adjusted_time.minute,
-                    tzinfo=pytz.timezone("Europe/Kyiv"),
-                ),
-                days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
-                job_kwargs={
-                    "misfire_grace_time": None,
-                },
+    if settings.DEBUG:
+        application.add_handler(
+            CommandHandler(
+                command="manual_batch_pair_check",
+                callback=commands.manual_batch_pair_check,
             )
+        )
 
     # Add choice between webhook and polling later
     if settings.WEBHOOK_URL is None:

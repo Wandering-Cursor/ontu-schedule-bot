@@ -1,9 +1,14 @@
 """This is a utils module, it contains Requests and pagination for bot"""
 
+import bz2
 import datetime
+import json
 import re
+from base64 import b85decode, b85encode
+from collections.abc import Sequence
 
 import pytz
+from telegram.constants import InlineKeyboardButtonLimit
 
 
 def current_time_in_kiev() -> datetime.datetime:
@@ -161,3 +166,44 @@ def split_message(text: str, max_length: int = 4096) -> list[str]:  # noqa: C901
         chunks.append(remaining)
 
     return chunks
+
+
+def data_to_string(data: Sequence | str) -> str:
+    """Converts arbitrary data to a pattern string"""
+    json_str = json.dumps(data, default=str, separators=(",", ":"), ensure_ascii=False)
+    raw_bytes = json_str.encode()
+
+    # First, try without compression
+    encoded_raw = b85encode(raw_bytes).decode()
+    if len(encoded_raw) <= InlineKeyboardButtonLimit.MAX_CALLBACK_DATA:
+        return encoded_raw
+
+    # If raw-encoded data is too large, try bz2 compression
+    compressed_bytes = bz2.compress(raw_bytes)
+    encoded_compressed = b85encode(compressed_bytes).decode()
+    if len(encoded_compressed) <= InlineKeyboardButtonLimit.MAX_CALLBACK_DATA:
+        return encoded_compressed
+
+    # Both raw and compressed encodings exceed the allowed size
+    raise ValueError("Data is too large to encode in a pattern", json_str)
+
+
+def string_to_data(pattern: str) -> Sequence | str:
+    """Converts pattern string back to data"""
+    try:
+        data = b85decode(pattern.encode())
+    except ValueError as exc:
+        raise ValueError("Invalid callback data: base85 decode failed") from exc
+
+    # data_to_string first stores raw JSON and falls back to bz2 only when needed,
+    # so we mirror that order here.
+    try:
+        return json.loads(data.decode())
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        pass
+
+    try:
+        decompressed_data = bz2.decompress(data)
+        return json.loads(decompressed_data.decode())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Invalid callback data: malformed payload") from exc

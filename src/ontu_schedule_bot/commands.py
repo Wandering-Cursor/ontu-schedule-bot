@@ -7,17 +7,18 @@ import json
 import logging
 import time
 import traceback
-from typing import Literal
 from uuid import UUID
 
 import httpx
+import pytz
 import telegram.error
-from telegram import Update
+from telegram import BotCommand, BotCommandScopeChat, BotCommandScopeDefault, Update
 from telegram.constants import ParseMode
-from telegram.ext import CallbackContext, ContextTypes
+from telegram.ext import Application, CallbackContext, ContextTypes, JobQueue
 
 from ontu_schedule_bot import messages, utils
 from ontu_schedule_bot.errors import SubscriptionNotFoundError
+from ontu_schedule_bot.patterns import Patterns, SubscriptionItemType
 from ontu_schedule_bot.schemas import SendMessageCampaignDTO
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
@@ -26,12 +27,7 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     Chat,
     CreateChatRequest,
     DaySchedule,
-    Department,
-    Faculty,
-    Group,
-    Pair,
     Subscription,
-    Teacher,
 )
 from ontu_schedule_bot.utils import PAIR_START_TIME
 
@@ -135,7 +131,6 @@ async def start_command(
 
     await messages.start_command(
         update=update,
-        chat=chat,
         subscription=subscription,
     )
 
@@ -152,11 +147,8 @@ async def manage_subscription(
     """
     await messages.processing_update(update=update)
 
-    chat = await get_chat_info(update=update)
-
     await messages.manage_subscription(
         update=update,
-        chat=chat,
     )
 
 
@@ -175,7 +167,6 @@ async def manage_subscription_groups(
 
     await messages.manage_subscription_groups(
         update=update,
-        chat=chat,
         subscription=subscription,
     )
 
@@ -195,7 +186,6 @@ async def manage_subscription_teachers(
 
     await messages.manage_subscription_teachers(
         update=update,
-        chat=chat,
         subscription=subscription,
     )
 
@@ -212,7 +202,15 @@ async def remove_subscription_items(
     if not update.callback_query or not update.callback_query.data:
         raise ValueError("remove_subscription_items is designed for callbacks")
 
-    item_type: Literal["group", "teacher"] = update.callback_query.data[1]  # type: ignore
+    callback_data = Patterns.load(update.callback_query.data)
+
+    if isinstance(callback_data, Patterns):
+        raise ValueError("Invalid callback data for remove_subscription_items")
+
+    if len(callback_data) < 2:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for remove_subscription_items")
+
+    item_type: SubscriptionItemType = SubscriptionItemType(callback_data[1])
 
     chat = await get_chat_info(update=update)
 
@@ -220,7 +218,6 @@ async def remove_subscription_items(
 
     await messages.remove_subscription_items(
         update=update,
-        chat=chat,
         subscription=subscription,
         item_type=item_type,
     )
@@ -238,29 +235,36 @@ async def remove_subscription_item(
     if not update.callback_query or not update.callback_query.data:
         raise ValueError("remove_subscription_item is designed for callbacks")
 
-    item_type: Literal["group", "teacher"] = update.callback_query.data[1]  # type: ignore
-    item: Teacher | Group = update.callback_query.data[2]  # type: ignore
+    callback_data = Patterns.load(update.callback_query.data)
+
+    if isinstance(callback_data, Patterns):
+        raise ValueError("Invalid callback data for remove_subscription_item")
+
+    if len(callback_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for remove_subscription_item")
+
+    item_type: SubscriptionItemType = SubscriptionItemType(callback_data[1])
+    item: UUID = callback_data[2]  # pyright: ignore[reportAssignmentType]
 
     chat = await get_chat_info(update=update)
 
     client = get_current_client()
 
-    if item_type == "group":
+    if item_type == SubscriptionItemType.GROUP:
         subscription = client.remove_group(
             chat_id=chat.platform_chat_id,
-            group_id=item.uuid,
+            group_id=item,
         )
-    elif item_type == "teacher":
+    elif item_type == SubscriptionItemType.TEACHER:
         subscription = client.remove_teacher(
             chat_id=chat.platform_chat_id,
-            teacher_id=item.uuid,
+            teacher_id=item,
         )
     else:
         raise RuntimeError("Unsupported item type")
 
     await messages.remove_subscription_items(
         update=update,
-        chat=chat,
         subscription=subscription,
         item_type=item_type,
     )
@@ -278,15 +282,12 @@ async def add_subscription_group(
     """
     await messages.processing_update(update=update)
 
-    chat = await get_chat_info(update=update)
-
     client = get_current_client()
 
     faculties = client.read_faculties()
 
     await messages.add_subscription_group(
         update=update,
-        chat=chat,
         faculties=faculties.items,
     )
 
@@ -303,15 +304,12 @@ async def add_subscription_teacher(
     """
     await messages.processing_update(update=update)
 
-    chat = await get_chat_info(update=update)
-
     client = get_current_client()
 
     departments = client.read_departments()
 
     await messages.add_subscription_teacher(
         update=update,
-        chat=chat,
         departments=departments.items,
     )
 
@@ -329,14 +327,32 @@ async def select_faculty(
     if not query or not query.message or not query.data:
         return
 
-    faculty: Faculty = query.data[1]  # type: ignore
-    page_number: int = query.data[2]  # type: ignore
+    query_data = Patterns.load(query.data)
+
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for select_faculty")
+
+    if len(query_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for select_faculty")
+
+    faculty_id = UUID(query_data[1])  # pyright: ignore[reportArgumentType]
+    page_number: int = query_data[2]  # type: ignore
 
     client = get_current_client()
 
+    faculty = client.read_faculty(faculty_id=faculty_id)
+
+    if not faculty:
+        await messages.entity_not_found_message(
+            update=update,
+            entity="Faculty",
+            entity_id=faculty_id,
+        )
+        return
+
     groups = client.read_groups(
-        faculty_id=faculty.uuid,
         page=page_number,
+        faculty_id=faculty_id,
     )
 
     await messages.select_faculty(
@@ -359,13 +375,31 @@ async def select_department(
     if not query or not query.message or not query.data:
         return
 
-    department: Department = query.data[1]  # type: ignore
-    page_number: int = query.data[2]  # type: ignore
+    query_data = Patterns.load(query.data)
+
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for select_department")
+
+    if len(query_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for select_department")
+
+    department_id = UUID(query_data[1])  # pyright: ignore[reportArgumentType]
+    page_number: int = query_data[2]  # type: ignore
 
     client = get_current_client()
 
+    department = client.read_department(department_id=department_id)
+
+    if not department:
+        await messages.entity_not_found_message(
+            update=update,
+            entity="Department",
+            entity_id=department_id,
+        )
+        return
+
     teachers = client.read_teachers(
-        department_id=department.uuid,
+        department_id=department_id,
         page=page_number,
     )
 
@@ -386,29 +420,36 @@ async def add_subscription_item(
     if not query or not query.message or not query.data:
         return None
 
-    item_type: Literal["group", "teacher"] = query.data[1]  # type: ignore
-    item: Group | Teacher = query.data[2]  # type: ignore
+    query_data = Patterns.load(query.data)
+
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for add_subscription_item")
+
+    if len(query_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for add_subscription_item")
+
+    item_type: SubscriptionItemType = SubscriptionItemType(query_data[1])
+    item_id = UUID(query_data[2])  # pyright: ignore[reportArgumentType]
 
     chat = await get_chat_info(update=update)
 
     client = get_current_client()
 
-    if item_type == "group":
+    if item_type == SubscriptionItemType.GROUP:
         client.add_group(
             chat_id=chat.platform_chat_id,
-            group_id=item.uuid,
+            group_id=item_id,
         )
-    elif item_type == "teacher":
+    elif item_type == SubscriptionItemType.TEACHER:
         client.add_teacher(
             chat_id=chat.platform_chat_id,
-            teacher_id=item.uuid,
+            teacher_id=item_id,
         )
     else:
         raise RuntimeError("Unsupported item type")
 
     return await messages.manage_subscription(
         update=update,
-        chat=chat,
     )
 
 
@@ -567,6 +608,8 @@ async def get_week_schedule(
     _context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Gets weekly schedule from admin service"""
+    get_week_with_entity_len = 2
+
     current_update.set(update)
 
     await messages.processing_update(update=update)
@@ -574,6 +617,20 @@ async def get_week_schedule(
     telegram_chat = update.effective_chat
     if not telegram_chat:
         raise RuntimeError("No chat in update")
+
+    query_data = (
+        Patterns.load(update.callback_query.data)
+        if update.callback_query and update.callback_query.data
+        else None
+    )
+
+    for_entity = None
+    if (
+        query_data
+        and not isinstance(query_data, Patterns)
+        and len(query_data) == get_week_with_entity_len
+    ):
+        for_entity = str(query_data[1])
 
     client = get_current_client()
 
@@ -585,6 +642,9 @@ async def get_week_schedule(
 
     for item in schedule_items:
         if not item:
+            continue
+
+        if for_entity and item.for_entity != for_entity:
             continue
 
         await messages.send_week_schedule(
@@ -605,13 +665,64 @@ async def get_pair_details(
     if not query or not query.message or not query.data:
         raise ValueError("get_pair_details is designed for callbacks")
 
-    pair: Pair = query.data[1]  # type: ignore
-    day: DaySchedule = query.data[2]  # type: ignore
+    query_data = Patterns.load(query.data)
+
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for get_pair_details")
+
+    if len(query_data) < 4:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for get_pair_details")
+
+    pair_number = int(query_data[1])  # pyright: ignore[reportArgumentType]
+    day = datetime.date.fromisoformat(query_data[2])  # pyright: ignore[reportArgumentType]
+    for_entity = str(query_data[3])  # pyright: ignore[reportArgumentType]
+
+    client = get_current_client()
+
+    chat = await get_chat_info(update=update)
+
+    day_schedules = client.schedule_day(
+        chat_id=chat.platform_chat_id,
+        date=day,
+    )
+
+    day_schedule = None
+    pair = None
+    for item in day_schedules:
+        if not item:
+            continue
+
+        if item.for_entity != for_entity:
+            continue
+
+        day_schedule = item
+
+        for p in item.pairs:
+            if p.number == pair_number:
+                pair = p
+                break
+
+    if not day_schedule or not pair:
+        logger.warning(
+            {
+                "msg": "No schedule or pair found for the given data",
+                "chat_id": chat.platform_chat_id,
+                "date": day,
+                "for_entity": for_entity,
+                "pair_number": pair_number,
+                "schedules": day_schedules,
+            }
+        )
+
+        await messages.send_schedule_not_found_message(
+            update=update,
+        )
+        return
 
     await messages.send_pair_details(
         update=update,
         pair=pair,
-        day_schedule=day,
+        day_schedule=day_schedule,
     )
 
 
@@ -627,11 +738,50 @@ async def get_schedule(
     if not query or not query.message or not query.data:
         raise ValueError("get_schedule is designed for callbacks")
 
-    day_schedule: DaySchedule = query.data[1]  # type: ignore
+    query_data = Patterns.load(query.data)
 
-    telegram_chat = update.effective_chat
-    if not telegram_chat:
-        raise RuntimeError("No chat in update")
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for get_schedule")
+
+    if len(query_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for get_schedule")
+
+    date = datetime.date.fromisoformat(query_data[1])  # pyright: ignore[reportArgumentType]
+    for_entity = str(query_data[2])
+
+    client = get_current_client()
+
+    chat = await get_chat_info(update=update)
+
+    day_schedules = client.schedule_day(
+        chat_id=chat.platform_chat_id,
+        date=date,
+    )
+
+    day_schedule = None
+    for item in day_schedules:
+        if not item:
+            continue
+
+        if item.for_entity == for_entity:
+            day_schedule = item
+            break
+
+    if not day_schedule:
+        logger.warning(
+            {
+                "msg": "No schedule found for the given date and entity",
+                "chat_id": chat.platform_chat_id,
+                "date": date,
+                "for_entity": for_entity,
+                "schedules": day_schedules,
+            }
+        )
+
+        await messages.send_schedule_not_found_message(
+            update=update,
+        )
+        return
 
     await messages.send_day_schedule(
         update=get_current_update(),
@@ -740,7 +890,6 @@ async def toggle_subscription(
 
     await messages.start_command(
         update=update,
-        chat=chat,
         subscription=subscription,
     )
 
@@ -825,6 +974,14 @@ async def send_messages_for_campaign(
         chat_id=settings.DEBUG_CHAT_ID,
         text="Розсилка компанії завершена.",
     )
+
+
+async def noop_command(
+    update: Update,
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """A no-operation command that replies with a snarky message."""
+    await messages.noop_response(update=update)
 
 
 def get_error_message_text(
@@ -917,3 +1074,55 @@ async def error_handler(
             text=message_detail,
             parse_mode=ParseMode.HTML,
         )
+
+
+async def post_init(
+    application: Application,
+) -> None:
+    """Performs post initialization of the bot, such as setting up scheduled jobs"""
+    default_commands = [
+        BotCommand(command="start", description="Налаштування боту"),
+        BotCommand(command="today", description="Розклад на сьогодні"),
+        BotCommand(command="tomorrow", description="Розклад на завтра"),
+        BotCommand(command="week", description="Розклад на тиждень"),
+        BotCommand(command="next_pair", description="Наступна пара"),
+    ]
+
+    await application.bot.set_my_commands(
+        commands=default_commands,
+        scope=BotCommandScopeDefault(),
+    )
+    await application.bot.set_my_commands(
+        commands=[
+            *default_commands,
+            BotCommand(
+                command="send_message_campaign",
+                description="Надіслати кампанію повідомлень (вкажіть ID повідомлення)",
+            ),
+        ],
+        scope=BotCommandScopeChat(chat_id=settings.DEBUG_CHAT_ID),
+    )
+
+    if settings.RUN_PERIODIC_JOBS:
+        if not isinstance(application.job_queue, JobQueue):
+            logger.error("Application doesn't have job_queue")
+            return
+
+        for _pair, start_time in PAIR_START_TIME.items():
+            # Convert time to datetime, subtract 10 minutes, then back to time
+            temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011
+            temp_datetime -= datetime.timedelta(minutes=10)
+            adjusted_time = temp_datetime.time()
+
+            application.job_queue.run_daily(
+                batch_pair_check,
+                time=datetime.time(
+                    hour=adjusted_time.hour,
+                    minute=adjusted_time.minute,
+                    tzinfo=pytz.timezone("Europe/Kyiv"),
+                ),
+                days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
+                job_kwargs={
+                    "misfire_grace_time": None,
+                },
+            )

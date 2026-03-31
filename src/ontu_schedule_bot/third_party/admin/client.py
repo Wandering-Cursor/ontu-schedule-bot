@@ -12,8 +12,10 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     Chat,
     CreateChatRequest,
     DaySchedule,
+    Department,
     DepartmentPaginatedRequest,
     DepartmentPaginatedResponse,
+    Faculty,
     FacultyPaginatedRequest,
     FacultyPaginatedResponse,
     GroupPaginatedRequest,
@@ -298,6 +300,16 @@ class AdminClient:
 
         return data
 
+    def read_faculty(self, faculty_id: pydantic.UUID4) -> Faculty | None:
+        response = self.client.get(f"/public/faculty/{faculty_id}")
+
+        if response.status_code == httpx.codes.NOT_FOUND:
+            return None
+
+        reraise_for_status(response)
+
+        return Faculty.model_validate(response.json())
+
     def read_groups(
         self,
         page: int = 1,
@@ -335,6 +347,16 @@ class AdminClient:
             raise ValueError("Too many departments to read in one request")
 
         return data
+
+    def read_department(self, department_id: pydantic.UUID4) -> Department | None:
+        response = self.client.get(f"/public/department/{department_id}")
+
+        if response.status_code == httpx.codes.NOT_FOUND:
+            return None
+
+        reraise_for_status(response)
+
+        return Department.model_validate(response.json())
 
     def read_teachers(
         self,

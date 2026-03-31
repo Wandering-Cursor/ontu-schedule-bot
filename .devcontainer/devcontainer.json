@@ -11,13 +11,20 @@
 			"extensions": [
 				"ms-azuretools.vscode-docker",
 				"ms-vscode-remote.remote-containers",
-				"ms-python.black-formatter",
-				"ms-python.isort",
 				"charliermarsh.ruff"
 			],
 			"settings": {
-				"editor.formatOnSave": true,
-				"ruff.fixAll": true
+				"[python]": {
+					"editor.formatOnSave": true,
+					"ruff.fixAll": true,
+					"editor.codeActionsOnSave": {
+						"source.organizeImports": "always"
+					}
+				},
+				"python.analysis.extraPaths": [
+					"src/"
+				],
+				"python.terminal.useEnvFile": true
 			}
 		}
 	},
