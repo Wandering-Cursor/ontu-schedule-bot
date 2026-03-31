@@ -283,7 +283,7 @@ async def remove_subscription_items(
     }
 
     items = []
-    callback_data = ("error",)
+    callback_data = Patterns.NOOP.with_args()
     if item_type == SubscriptionItemType.GROUP:
         items = subscription.groups
         callback_data = Patterns.MANAGE_GROUPS.with_args()
