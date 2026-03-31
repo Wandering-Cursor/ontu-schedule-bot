@@ -1,10 +1,12 @@
 """Contains the 'heart' of the bot. Here it's initialized and configured"""
 
+import asyncio
 import datetime
 import logging
 import os
 
 import pytz
+from telegram import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
 from telegram.ext import (
     AIORateLimiter,
     Application,
@@ -200,6 +202,39 @@ def main() -> None:
                 callback=commands.manual_batch_pair_check,
             )
         )
+
+    default_commands = [
+        BotCommand(command="start", description="Налаштування боту"),
+        BotCommand(command="today", description="Розклад на сьогодні"),
+        BotCommand(command="tomorrow", description="Розклад на завтра"),
+        BotCommand(command="week", description="Розклад на тиждень"),
+        BotCommand(command="next_pair", description="Наступна пара"),
+    ]
+
+    current_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(current_loop)
+
+    current_loop.run_until_complete(
+        application.bot.set_my_commands(
+            commands=default_commands,
+            scope=BotCommandScopeDefault(),
+        )
+    )
+    current_loop.run_until_complete(
+        application.bot.set_my_commands(
+            commands=[
+                *default_commands,
+                BotCommand(
+                    command="send_message_campaign",
+                    description="Надіслати кампанію повідомлень (вкажіть ID повідомлення)",
+                ),
+            ],
+            scope=BotCommandScopeChat(chat_id=settings.DEBUG_CHAT_ID),
+        )
+    )
+
+    current_loop.close()
+    asyncio.set_event_loop(None)
 
     if settings.RUN_PERIODIC_JOBS:
         if not isinstance(application.job_queue, JobQueue):

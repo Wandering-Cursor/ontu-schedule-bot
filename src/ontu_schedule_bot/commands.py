@@ -7,7 +7,7 @@ import json
 import logging
 import time
 import traceback
-from typing import Literal
+from collections.abc import Sequence
 from uuid import UUID
 
 import httpx
@@ -27,12 +27,7 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     Chat,
     CreateChatRequest,
     DaySchedule,
-    Department,
-    Faculty,
-    Group,
-    Pair,
     Subscription,
-    Teacher,
 )
 from ontu_schedule_bot.utils import PAIR_START_TIME
 
@@ -330,14 +325,24 @@ async def select_faculty(
 
     client = get_current_client()
 
+    faculty = client.read_faculty(faculty_id=faculty_id)
+
+    if not faculty:
+        await messages.entity_not_found_message(
+            update=update,
+            entity="Faculty",
+            entity_id=faculty_id,
+        )
+        return
+
     groups = client.read_groups(
-        faculty_id=faculty_id,
         page=page_number,
+        faculty_id=faculty_id,
     )
 
     await messages.select_faculty(
         update=update,
-        faculty_id=faculty_id,
+        faculty=faculty,
         groups=groups,
     )
 
@@ -357,19 +362,29 @@ async def select_department(
 
     query_data = Patterns.load(query.data)
 
-    department = UUID(query_data[1])  # pyright: ignore[reportArgumentType]
+    department_id = UUID(query_data[1])  # pyright: ignore[reportArgumentType]
     page_number: int = query_data[2]  # type: ignore
 
     client = get_current_client()
 
+    department = client.read_department(department_id=department_id)
+
+    if not department:
+        await messages.entity_not_found_message(
+            update=update,
+            entity="Department",
+            entity_id=department_id,
+        )
+        return
+
     teachers = client.read_teachers(
-        department_id=department,
+        department_id=department_id,
         page=page_number,
     )
 
     await messages.select_department(
         update=update,
-        department_id=department,
+        department=department,
         teachers=teachers,
     )
 
@@ -566,6 +581,8 @@ async def get_week_schedule(
     _context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Gets weekly schedule from admin service"""
+    get_week_with_entity_len = 2
+
     current_update.set(update)
 
     await messages.processing_update(update=update)
@@ -573,6 +590,20 @@ async def get_week_schedule(
     telegram_chat = update.effective_chat
     if not telegram_chat:
         raise RuntimeError("No chat in update")
+
+    query_data = (
+        Patterns.load(update.callback_query.data)
+        if update.callback_query and update.callback_query.data
+        else None
+    )
+
+    for_entity = None
+    if (
+        query_data
+        and isinstance(query_data, Sequence)
+        and len(query_data) == get_week_with_entity_len
+    ):
+        for_entity = str(query_data[1])
 
     client = get_current_client()
 
@@ -584,6 +615,9 @@ async def get_week_schedule(
 
     for item in schedule_items:
         if not item:
+            continue
+
+        if for_entity and item.for_entity != for_entity:
             continue
 
         await messages.send_week_schedule(
@@ -604,13 +638,58 @@ async def get_pair_details(
     if not query or not query.message or not query.data:
         raise ValueError("get_pair_details is designed for callbacks")
 
-    pair: Pair = query.data[1]  # type: ignore
-    day: DaySchedule = query.data[2]  # type: ignore
+    query_data = Patterns.load(query.data)
+
+    pair_number = int(query_data[1])  # pyright: ignore[reportArgumentType]
+    day = datetime.date.fromisoformat(query_data[2])  # pyright: ignore[reportArgumentType]
+    for_entity = str(query_data[3])  # pyright: ignore[reportArgumentType]
+
+    client = get_current_client()
+
+    chat = await get_chat_info(update=update)
+
+    day_schedules = client.schedule_day(
+        chat_id=chat.platform_chat_id,
+        date=day,
+    )
+
+    day_schedule = None
+    pair = None
+    for item in day_schedules:
+        if not item:
+            continue
+
+        if item.for_entity != for_entity:
+            continue
+
+        day_schedule = item
+
+        for p in item.pairs:
+            if p.number == pair_number:
+                pair = p
+                break
+
+    if not day_schedule or not pair:
+        logger.warning(
+            {
+                "msg": "No schedule or pair found for the given data",
+                "chat_id": chat.platform_chat_id,
+                "date": day,
+                "for_entity": for_entity,
+                "pair_number": pair_number,
+                "schedules": day_schedules,
+            }
+        )
+
+        await messages.send_schedule_not_found_message(
+            update=update,
+        )
+        return
 
     await messages.send_pair_details(
         update=update,
         pair=pair,
-        day_schedule=day,
+        day_schedule=day_schedule,
     )
 
 
@@ -626,11 +705,44 @@ async def get_schedule(
     if not query or not query.message or not query.data:
         raise ValueError("get_schedule is designed for callbacks")
 
-    day_schedule: DaySchedule = query.data[1]  # type: ignore
+    query_data = Patterns.load(query.data)
 
-    telegram_chat = update.effective_chat
-    if not telegram_chat:
-        raise RuntimeError("No chat in update")
+    date = datetime.date.fromisoformat(query_data[1])  # pyright: ignore[reportArgumentType]
+    for_entity = str(query_data[2])
+
+    client = get_current_client()
+
+    chat = await get_chat_info(update=update)
+
+    day_schedules = client.schedule_day(
+        chat_id=chat.platform_chat_id,
+        date=date,
+    )
+
+    day_schedule = None
+    for item in day_schedules:
+        if not item:
+            continue
+
+        if item.for_entity == for_entity:
+            day_schedule = item
+            break
+
+    if not day_schedule:
+        logger.warning(
+            {
+                "msg": "No schedule found for the given date and entity",
+                "chat_id": chat.platform_chat_id,
+                "date": date,
+                "for_entity": for_entity,
+                "schedules": day_schedules,
+            }
+        )
+
+        await messages.send_schedule_not_found_message(
+            update=update,
+        )
+        return
 
     await messages.send_day_schedule(
         update=get_current_update(),

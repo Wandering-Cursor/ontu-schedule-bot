@@ -1,12 +1,10 @@
 import datetime
-from uuid import UUID
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 
 from ontu_schedule_bot import utils
 from ontu_schedule_bot.patterns import Patterns, SubscriptionItemType
 from ontu_schedule_bot.third_party.admin.schemas import (
-    Chat,
     DaySchedule,
     Department,
     Faculty,
@@ -406,7 +404,7 @@ async def add_subscription_teacher(
 
 async def select_faculty(
     update: "Update",
-    faculty_id: "UUID",
+    faculty: "Faculty",
     groups: GroupPaginatedResponse,
 ) -> None:
     """
@@ -434,7 +432,7 @@ async def select_faculty(
             InlineKeyboardButton(
                 "⬅️",
                 callback_data=Patterns.SELECT_FACULTY.with_args(
-                    faculty_id,
+                    faculty.uuid,
                     groups.meta.page - 1,
                 ),
             ),
@@ -452,7 +450,7 @@ async def select_faculty(
             InlineKeyboardButton(
                 "➡️",
                 callback_data=Patterns.SELECT_FACULTY.with_args(
-                    faculty_id,
+                    faculty.uuid,
                     groups.meta.page + 1,
                 ),
             ),
@@ -471,17 +469,16 @@ async def select_faculty(
         ]
     )
 
-    # FIXME: Get Faculty by it's ID to show its name here, instead of just showing the ID
     await edit_or_reply(
         update=update,
-        text=f"Оберіть групу факультету {faculty_id} для підписки:",
+        text=f"Оберіть групу факультету {faculty.short_name} для підписки:",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
 async def select_department(
     update: "Update",
-    department_id: "UUID",
+    department: "Department",
     teachers: TeacherPaginatedResponse,
 ) -> None:
     """
@@ -509,7 +506,7 @@ async def select_department(
             InlineKeyboardButton(
                 "⬅️",
                 callback_data=Patterns.SELECT_DEPARTMENT.with_args(
-                    department_id,
+                    department.uuid,
                     teachers.meta.page - 1,
                 ),
             ),
@@ -527,7 +524,7 @@ async def select_department(
             InlineKeyboardButton(
                 "➡️",
                 callback_data=Patterns.SELECT_DEPARTMENT.with_args(
-                    department_id,
+                    department.uuid,
                     teachers.meta.page + 1,
                 ),
             ),
@@ -546,10 +543,9 @@ async def select_department(
         ]
     )
 
-    # FIXME: Get Department by it's ID to show its name here, instead of just showing the ID
     await edit_or_reply(
         update=update,
-        text=f"Оберіть викладача кафедри {department_id} для підписки:",
+        text=f"Оберіть викладача кафедри {department.full_name} для підписки:",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -578,9 +574,9 @@ async def send_pair_details(
             [
                 InlineKeyboardButton(
                     "Повернутися до розкладу 📅",
-                    callback_data=(
-                        "get_schedule",
-                        day_schedule,
+                    callback_data=Patterns.GET_SCHEDULE.with_args(
+                        day_schedule.date.isoformat(),
+                        day_schedule.for_entity,
                     ),
                 )
             ]
@@ -620,9 +616,9 @@ async def send_pair_details_with_bot(
             [
                 InlineKeyboardButton(
                     "Повернутися до розкладу 📅",
-                    callback_data=(
-                        "get_schedule",
-                        day_schedule,
+                    callback_data=Patterns.GET_SCHEDULE.with_args(
+                        day_schedule.date.isoformat(),
+                        day_schedule.for_entity,
                     ),
                 )
             ]
@@ -661,10 +657,10 @@ async def send_day_schedule(
             pair_row.append(
                 InlineKeyboardButton(
                     text=f"{pair.number}. {lesson.short_name}",
-                    callback_data=(
-                        "get_pair_details",
-                        pair,
-                        day_schedule,
+                    callback_data=Patterns.GET_PAIR_DETAILS.with_args(
+                        pair.number,
+                        day_schedule.date.isoformat(),
+                        day_schedule.for_entity,
                     ),
                 )
             )
@@ -675,7 +671,7 @@ async def send_day_schedule(
         [
             InlineKeyboardButton(
                 "Повернутися до розкладу тижня 📅",
-                callback_data=("get_week_schedule",),
+                callback_data=Patterns.WEEK_SCHEDULE.with_args(day_schedule.for_entity),
             )
         ]
     )
@@ -693,6 +689,38 @@ async def send_no_classes_message(
 ) -> None:
     """Sends a message indicating no classes are scheduled for the given date."""
     text = f"Не знайдено жодних занять на {date.strftime('%d.%m.%Y')}."  # noqa: RUF001
+
+    await edit_or_reply(
+        update=update,
+        text=text,
+    )
+
+
+async def send_schedule_not_found_message(
+    update: "Update",
+) -> None:
+    """Sends a message indicating that the schedule was not found."""
+    text = (
+        "Упс! Не вдалося знайти розклад. Можливо ви оновили підписку?\n"  # noqa: RUF001
+        "Якщо ви вважаєте що це помилка, будь ласка, зв'яжіться з підтримкою."
+    )
+
+    await edit_or_reply(
+        update=update,
+        text=text,
+    )
+
+
+async def entity_not_found_message(
+    update: "Update",
+    entity: str,
+    entity_id: object,
+) -> None:
+    """Sends a message indicating that the specified entity was not found."""
+    text = (
+        f"Не вдалося знайти {entity} з ID {entity_id}.\n"  # noqa: RUF001
+        "Якщо ви вважаєте що це помилка, будь ласка, зв'яжіться з підтримкою."
+    )
 
     await edit_or_reply(
         update=update,
@@ -736,10 +764,9 @@ async def send_week_schedule(
             [
                 InlineKeyboardButton(
                     text=get_button_name(day_schedule),
-                    callback_data=(
-                        "get_schedule",
-                        day_schedule,
-                        week_schedule,
+                    callback_data=Patterns.GET_SCHEDULE.with_args(
+                        day_schedule.date,
+                        day_schedule.for_entity,
                     ),
                 ),
             ]

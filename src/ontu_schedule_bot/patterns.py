@@ -27,6 +27,8 @@ class Patterns(StrEnum):
 
     TOGGLE_SUBSCRIPTION = "toggle_subscription"
 
+    WEEK_SCHEDULE = "week_schedule"
+
     # Use parameters
     REMOVE_SUBSCRIPTION_ITEMS = "remove_subscription_items"
     REMOVE_ITEM = "ri"
@@ -35,6 +37,9 @@ class Patterns(StrEnum):
     SELECT_DEPARTMENT = "sd"
 
     ADD_SUBSCRIPTION_ITEM = "asi"
+
+    GET_SCHEDULE = "gs"
+    GET_PAIR_DETAILS = "gpd"
 
     def with_args(self, *args: object) -> str:
         if not args:
@@ -108,7 +113,7 @@ def add_subscription_group_pattern(callback_data: Sequence[Patterns | object] | 
     """Pattern for add_subscription_group"""
     assert isinstance(callback_data, Sequence)
 
-    if len(callback_data) != 2:
+    if len(callback_data) != 2:  # noqa: PLR2004
         return False
 
     return all(
@@ -124,7 +129,7 @@ def add_subscription_teacher_pattern(callback_data: Sequence[Patterns | object] 
     """Pattern for add_subscription_teacher"""
     assert isinstance(callback_data, Sequence)
 
-    if len(callback_data) != 2:
+    if len(callback_data) != 2:  # noqa: PLR2004
         return False
 
     return all(
@@ -140,7 +145,7 @@ def select_faculty_pattern(callback_data: Sequence[Patterns | object] | Patterns
     """Pattern for select_faculty"""
     assert isinstance(callback_data, Sequence)
 
-    if len(callback_data) != 3:
+    if len(callback_data) != 3:  # noqa: PLR2004
         return False
 
     return all(
@@ -157,7 +162,7 @@ def select_department_pattern(callback_data: Sequence[Patterns | object] | Patte
     """Pattern for select_department"""
     assert isinstance(callback_data, Sequence)
 
-    if len(callback_data) != 3:
+    if len(callback_data) != 3:  # noqa: PLR2004
         return False
 
     return all(
@@ -174,42 +179,80 @@ def add_subscription_item_pattern(callback_data: Sequence[Patterns | object] | P
     """Pattern for add_subscription_item"""
     assert isinstance(callback_data, Sequence)
 
-    if len(callback_data) != 3:
+    if len(callback_data) != 3:  # noqa: PLR2004
         return False
 
     return all(
         [
             callback_data[0] == Patterns.ADD_SUBSCRIPTION_ITEM,
             callback_data[1] in (SubscriptionItemType.GROUP, SubscriptionItemType.TEACHER),
+            isinstance(callback_data[2], str),  # ID of a group or a teacher
         ]
     )
 
 
+@convert_data_to_object_decorator
 def start_pattern(callback_data: object) -> bool:
     """Pattern for start"""
-    assert isinstance(callback_data, str)
+    if not isinstance(callback_data, str):
+        return False
 
     return bool(callback_data == Patterns.START)
 
 
+@convert_data_to_object_decorator
 def get_week_schedule_pattern(callback_data: object) -> bool:
-    """Pattern for get_week_schedule"""
-    return bool(isinstance(callback_data, tuple) and callback_data[0] == "get_week_schedule")
+    """Pattern to get week's worth of schedule"""
+    if isinstance(callback_data, str):
+        return bool(callback_data == Patterns.WEEK_SCHEDULE)
+
+    if isinstance(callback_data, Sequence):
+        return bool(callback_data[0] == Patterns.WEEK_SCHEDULE)
+
+    return False
 
 
+@convert_data_to_object_decorator
 def get_schedule_pattern(callback_data: object) -> bool:
     """Pattern for get_schedule"""
-    return bool(isinstance(callback_data, tuple) and callback_data[0] == "get_schedule")
+    if not isinstance(callback_data, Sequence):
+        return False
+
+    if len(callback_data) != 3:  # noqa: PLR2004
+        return False
+
+    return all(
+        [
+            callback_data[0] == Patterns.GET_SCHEDULE,
+            isinstance(callback_data[1], str),  # Date
+            isinstance(callback_data[2], str),  # Name of a group or a teacher
+        ]
+    )
 
 
+@convert_data_to_object_decorator
 def get_pair_details_pattern(callback_data: object) -> bool:
     """Pattern for pair_details"""
-    return bool(isinstance(callback_data, tuple) and callback_data[0] == "get_pair_details")
+    if not isinstance(callback_data, Sequence):
+        return False
+
+    if len(callback_data) != 4:  # noqa: PLR2004
+        return False
+
+    return all(
+        [
+            callback_data[0] == Patterns.GET_PAIR_DETAILS,
+            isinstance(callback_data[1], int),  # Pair number
+            isinstance(callback_data[2], str),  # Date
+            isinstance(callback_data[3], str),  # Name of a group or a teacher
+        ]
+    )
 
 
 @convert_data_to_object_decorator
 def toggle_subscription_pattern(callback_data: object) -> bool:
     """Pattern for toggle_subscription"""
-    assert isinstance(callback_data, str)
+    if not isinstance(callback_data, str):
+        return False
 
     return bool(callback_data == Patterns.TOGGLE_SUBSCRIPTION)

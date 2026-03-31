@@ -171,7 +171,7 @@ def split_message(text: str, max_length: int = 4096) -> list[str]:  # noqa: C901
 
 def data_to_string(data: Sequence | str) -> str:
     """Converts arbitrary data to a pattern string"""
-    data = json.dumps(data, default=str, separators=(",", ":"))
+    data = json.dumps(data, default=str, separators=(",", ":"), ensure_ascii=False)
     converted = (
         bz2.compress(data.encode())
         if len(data) > InlineKeyboardButtonLimit.MAX_CALLBACK_DATA
