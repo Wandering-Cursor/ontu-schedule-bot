@@ -7,14 +7,14 @@ import json
 import logging
 import time
 import traceback
-from collections.abc import Sequence
 from uuid import UUID
 
 import httpx
+import pytz
 import telegram.error
-from telegram import Update
+from telegram import BotCommand, BotCommandScopeChat, BotCommandScopeDefault, Update
 from telegram.constants import ParseMode
-from telegram.ext import CallbackContext, ContextTypes
+from telegram.ext import Application, CallbackContext, ContextTypes, JobQueue
 
 from ontu_schedule_bot import messages, utils
 from ontu_schedule_bot.errors import SubscriptionNotFoundError
@@ -204,8 +204,11 @@ async def remove_subscription_items(
 
     callback_data = Patterns.load(update.callback_query.data)
 
-    if len(callback_data) < 2:  # noqa: PLR2004
+    if isinstance(callback_data, Patterns):
         raise ValueError("Invalid callback data for remove_subscription_items")
+
+    if len(callback_data) < 2:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for remove_subscription_items")
 
     item_type: SubscriptionItemType = SubscriptionItemType(callback_data[1])
 
@@ -233,6 +236,12 @@ async def remove_subscription_item(
         raise ValueError("remove_subscription_item is designed for callbacks")
 
     callback_data = Patterns.load(update.callback_query.data)
+
+    if isinstance(callback_data, Patterns):
+        raise ValueError("Invalid callback data for remove_subscription_item")
+
+    if len(callback_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for remove_subscription_item")
 
     item_type: SubscriptionItemType = SubscriptionItemType(callback_data[1])
     item: UUID = callback_data[2]  # pyright: ignore[reportAssignmentType]
@@ -320,6 +329,12 @@ async def select_faculty(
 
     query_data = Patterns.load(query.data)
 
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for select_faculty")
+
+    if len(query_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for select_faculty")
+
     faculty_id = UUID(query_data[1])  # pyright: ignore[reportArgumentType]
     page_number: int = query_data[2]  # type: ignore
 
@@ -362,6 +377,12 @@ async def select_department(
 
     query_data = Patterns.load(query.data)
 
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for select_department")
+
+    if len(query_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for select_department")
+
     department_id = UUID(query_data[1])  # pyright: ignore[reportArgumentType]
     page_number: int = query_data[2]  # type: ignore
 
@@ -400,6 +421,12 @@ async def add_subscription_item(
         return None
 
     query_data = Patterns.load(query.data)
+
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for add_subscription_item")
+
+    if len(query_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for add_subscription_item")
 
     item_type: SubscriptionItemType = SubscriptionItemType(query_data[1])
     item_id = UUID(query_data[2])  # pyright: ignore[reportArgumentType]
@@ -600,7 +627,7 @@ async def get_week_schedule(
     for_entity = None
     if (
         query_data
-        and isinstance(query_data, Sequence)
+        and not isinstance(query_data, Patterns)
         and len(query_data) == get_week_with_entity_len
     ):
         for_entity = str(query_data[1])
@@ -639,6 +666,12 @@ async def get_pair_details(
         raise ValueError("get_pair_details is designed for callbacks")
 
     query_data = Patterns.load(query.data)
+
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for get_pair_details")
+
+    if len(query_data) < 4:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for get_pair_details")
 
     pair_number = int(query_data[1])  # pyright: ignore[reportArgumentType]
     day = datetime.date.fromisoformat(query_data[2])  # pyright: ignore[reportArgumentType]
@@ -706,6 +739,12 @@ async def get_schedule(
         raise ValueError("get_schedule is designed for callbacks")
 
     query_data = Patterns.load(query.data)
+
+    if isinstance(query_data, Patterns):
+        raise ValueError("Invalid callback data for get_schedule")
+
+    if len(query_data) < 3:  # noqa: PLR2004
+        raise ValueError("Not enough parameters in callback data for get_schedule")
 
     date = datetime.date.fromisoformat(query_data[1])  # pyright: ignore[reportArgumentType]
     for_entity = str(query_data[2])
@@ -937,6 +976,14 @@ async def send_messages_for_campaign(
     )
 
 
+async def noop_command(
+    update: Update,
+    _context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """A no-operation command that replies with a snarky message."""
+    await messages.noop_response(update=update)
+
+
 def get_error_message_text(
     error: Exception,
     context: ContextTypes.DEFAULT_TYPE,
@@ -1027,3 +1074,55 @@ async def error_handler(
             text=message_detail,
             parse_mode=ParseMode.HTML,
         )
+
+
+async def post_init(
+    application: Application,
+) -> None:
+    """Performs post initialization of the bot, such as setting up scheduled jobs"""
+    default_commands = [
+        BotCommand(command="start", description="Налаштування боту"),
+        BotCommand(command="today", description="Розклад на сьогодні"),
+        BotCommand(command="tomorrow", description="Розклад на завтра"),
+        BotCommand(command="week", description="Розклад на тиждень"),
+        BotCommand(command="next_pair", description="Наступна пара"),
+    ]
+
+    await application.bot.set_my_commands(
+        commands=default_commands,
+        scope=BotCommandScopeDefault(),
+    )
+    await application.bot.set_my_commands(
+        commands=[
+            *default_commands,
+            BotCommand(
+                command="send_message_campaign",
+                description="Надіслати кампанію повідомлень (вкажіть ID повідомлення)",
+            ),
+        ],
+        scope=BotCommandScopeChat(chat_id=settings.DEBUG_CHAT_ID),
+    )
+
+    if settings.RUN_PERIODIC_JOBS:
+        if not isinstance(application.job_queue, JobQueue):
+            logger.error("Application doesn't have job_queue")
+            return
+
+        for _pair, start_time in PAIR_START_TIME.items():
+            # Convert time to datetime, subtract 10 minutes, then back to time
+            temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011
+            temp_datetime -= datetime.timedelta(minutes=10)
+            adjusted_time = temp_datetime.time()
+
+            application.job_queue.run_daily(
+                batch_pair_check,
+                time=datetime.time(
+                    hour=adjusted_time.hour,
+                    minute=adjusted_time.minute,
+                    tzinfo=pytz.timezone("Europe/Kyiv"),
+                ),
+                days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
+                job_kwargs={
+                    "misfire_grace_time": None,
+                },
+            )

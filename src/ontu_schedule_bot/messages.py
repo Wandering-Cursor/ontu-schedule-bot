@@ -1,4 +1,5 @@
 import datetime
+import random
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 
@@ -18,6 +19,7 @@ from ontu_schedule_bot.third_party.admin.schemas import (
 
 async def processing_update(
     update: "Update",
+    text: str = "Будь-ласка, зачекайте...",
 ) -> None:
     chat = update.effective_chat
     if chat is None:
@@ -26,9 +28,7 @@ async def processing_update(
     await chat.send_chat_action(action="typing")
 
     if update.callback_query:
-        await update.callback_query.answer(
-            text="Будь-ласка, зачекайте...",
-        )
+        await update.callback_query.answer(text=text)
 
 
 async def edit_or_reply(
@@ -321,7 +321,7 @@ async def remove_subscription_items(
 
     await edit_or_reply(
         update=update,
-        text=f"Оберіть {item_type}, який хочете видалити з підписки:",
+        text=f"Оберіть {item_type.to_remove_translation}, що ви хочете видалити з підписки:",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -441,7 +441,7 @@ async def select_faculty(
     pagination_row.append(
         InlineKeyboardButton(
             f"{groups.meta.page}/{groups.meta.total_pages}",
-            callback_data="noop",
+            callback_data=Patterns.NOOP.with_args(),
         ),
     )
 
@@ -515,7 +515,7 @@ async def select_department(
     pagination_row.append(
         InlineKeyboardButton(
             f"{teachers.meta.page}/{teachers.meta.total_pages}",
-            callback_data="noop",
+            callback_data=Patterns.NOOP.with_args(),
         ),
     )
 
@@ -776,4 +776,21 @@ async def send_week_schedule(
         update=update,
         text=f"Оберіть день тижня, щоб побачити розклад.\nДля {week_schedule.for_entity}",
         reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def noop_response(
+    update: "Update",
+) -> None:
+    """Sends a snarky message in response to a no-operation callback."""
+    responses = [
+        "Ну і нащо воно тобі треба?",  # noqa: RUF001
+        "Я нічого не роблю... Чи все ж роблю, тим що нічого не роблю?",
+        "Тицяйте, тицяйте, мені приємно ж 😠",
+        "А хай йому грець, знову нічого не робить!",  # noqa: RUF001
+    ]
+
+    await processing_update(
+        update=update,
+        text=random.choice(responses),
     )

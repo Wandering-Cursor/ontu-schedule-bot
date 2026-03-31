@@ -1,7 +1,6 @@
 """This is a utils module, it contains Requests and pagination for bot"""
 
 import bz2
-import contextlib
 import datetime
 import json
 import re
@@ -171,23 +170,40 @@ def split_message(text: str, max_length: int = 4096) -> list[str]:  # noqa: C901
 
 def data_to_string(data: Sequence | str) -> str:
     """Converts arbitrary data to a pattern string"""
-    data = json.dumps(data, default=str, separators=(",", ":"), ensure_ascii=False)
-    converted = (
-        bz2.compress(data.encode())
-        if len(data) > InlineKeyboardButtonLimit.MAX_CALLBACK_DATA
-        else data.encode()
-    )
-    encoded = b85encode(converted).decode()
+    json_str = json.dumps(data, default=str, separators=(",", ":"), ensure_ascii=False)
+    raw_bytes = json_str.encode()
 
-    if len(encoded) > InlineKeyboardButtonLimit.MAX_CALLBACK_DATA:
-        raise ValueError("Data is too large to encode in a pattern", data)
+    # First, try without compression
+    encoded_raw = b85encode(raw_bytes).decode()
+    if len(encoded_raw) <= InlineKeyboardButtonLimit.MAX_CALLBACK_DATA:
+        return encoded_raw
 
-    return encoded
+    # If raw-encoded data is too large, try bz2 compression
+    compressed_bytes = bz2.compress(raw_bytes)
+    encoded_compressed = b85encode(compressed_bytes).decode()
+    if len(encoded_compressed) <= InlineKeyboardButtonLimit.MAX_CALLBACK_DATA:
+        return encoded_compressed
+
+    # Both raw and compressed encodings exceed the allowed size
+    raise ValueError("Data is too large to encode in a pattern", json_str)
 
 
 def string_to_data(pattern: str) -> Sequence | str:
     """Converts pattern string back to data"""
-    data = b85decode(pattern.encode())
-    with contextlib.suppress(OSError):
-        data = bz2.decompress(data)
-    return json.loads(data.decode())
+    try:
+        data = b85decode(pattern.encode())
+    except ValueError as exc:
+        raise ValueError("Invalid callback data: base85 decode failed") from exc
+
+    # data_to_string first stores raw JSON and falls back to bz2 only when needed,
+    # so we mirror that order here.
+    try:
+        return json.loads(data.decode())
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        pass
+
+    try:
+        decompressed_data = bz2.decompress(data)
+        return json.loads(decompressed_data.decode())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Invalid callback data: malformed payload") from exc

@@ -12,7 +12,10 @@ def convert_data_to_object_decorator(func: Callable) -> Callable:
 
     @functools.wraps(func)
     def wrapper(callback_data: str) -> bool:
-        data = Patterns.load(callback_data)
+        try:
+            data = Patterns.load(callback_data)
+        except (ValueError, TypeError):
+            return False
         return func(data)
 
     return wrapper
@@ -41,6 +44,8 @@ class Patterns(StrEnum):
     GET_SCHEDULE = "gs"
     GET_PAIR_DETAILS = "gpd"
 
+    NOOP = "noop"
+
     def with_args(self, *args: object) -> str:
         if not args:
             return data_to_string(self)
@@ -63,6 +68,14 @@ class Patterns(StrEnum):
 class SubscriptionItemType(StrEnum):
     GROUP = "g"
     TEACHER = "t"
+
+    @property
+    def to_remove_translation(self) -> str:
+        translations = {
+            SubscriptionItemType.GROUP: "групу",
+            SubscriptionItemType.TEACHER: "викладача",
+        }
+        return translations[self]
 
 
 @convert_data_to_object_decorator
@@ -97,7 +110,12 @@ def remove_subscription_items_pattern(
 
     assert isinstance(callback_data, Sequence)
 
-    return bool(callback_data[0] == Patterns.REMOVE_SUBSCRIPTION_ITEMS)
+    return all(
+        [
+            callback_data[0] == Patterns.REMOVE_SUBSCRIPTION_ITEMS,
+            callback_data[1] in SubscriptionItemType,
+        ]
+    )
 
 
 @convert_data_to_object_decorator
@@ -105,7 +123,12 @@ def remove_subscription_item_pattern(callback_data: Sequence[Patterns | object] 
     """Pattern for remove_subscription_item"""
     assert isinstance(callback_data, Sequence)
 
-    return bool(callback_data[0] == Patterns.REMOVE_ITEM)
+    return all(
+        [
+            callback_data[0] == Patterns.REMOVE_ITEM,
+            callback_data[1] in SubscriptionItemType,
+        ]
+    )
 
 
 @convert_data_to_object_decorator
@@ -256,3 +279,12 @@ def toggle_subscription_pattern(callback_data: object) -> bool:
         return False
 
     return bool(callback_data == Patterns.TOGGLE_SUBSCRIPTION)
+
+
+@convert_data_to_object_decorator
+def noop_pattern(callback_data: object) -> bool:
+    """Pattern for noop"""
+    if not isinstance(callback_data, str):
+        return False
+
+    return bool(callback_data == Patterns.NOOP)

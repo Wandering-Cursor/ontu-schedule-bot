@@ -1,23 +1,19 @@
 """Contains the 'heart' of the bot. Here it's initialized and configured"""
 
-import asyncio
 import datetime
 import logging
 import os
 
 import pytz
-from telegram import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
 from telegram.ext import (
     AIORateLimiter,
     Application,
     CallbackQueryHandler,
     CommandHandler,
-    JobQueue,
 )
 
 from ontu_schedule_bot import commands, patterns
 from ontu_schedule_bot.settings import settings
-from ontu_schedule_bot.utils import PAIR_START_TIME
 
 LOG_DIR = settings.LOG_DIR
 
@@ -49,6 +45,9 @@ def main() -> None:
             AIORateLimiter(
                 max_retries=5,
             )
+        )
+        .post_init(
+            commands.post_init,
         )
         .build()
     )
@@ -136,6 +135,12 @@ def main() -> None:
             pattern=patterns.remove_subscription_item_pattern,
         )
     )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback=commands.noop_command,
+            pattern=patterns.noop_pattern,
+        )
+    )
 
     application.add_handler(
         CommandHandler(
@@ -202,63 +207,6 @@ def main() -> None:
                 callback=commands.manual_batch_pair_check,
             )
         )
-
-    default_commands = [
-        BotCommand(command="start", description="Налаштування боту"),
-        BotCommand(command="today", description="Розклад на сьогодні"),
-        BotCommand(command="tomorrow", description="Розклад на завтра"),
-        BotCommand(command="week", description="Розклад на тиждень"),
-        BotCommand(command="next_pair", description="Наступна пара"),
-    ]
-
-    current_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(current_loop)
-
-    current_loop.run_until_complete(
-        application.bot.set_my_commands(
-            commands=default_commands,
-            scope=BotCommandScopeDefault(),
-        )
-    )
-    current_loop.run_until_complete(
-        application.bot.set_my_commands(
-            commands=[
-                *default_commands,
-                BotCommand(
-                    command="send_message_campaign",
-                    description="Надіслати кампанію повідомлень (вкажіть ID повідомлення)",
-                ),
-            ],
-            scope=BotCommandScopeChat(chat_id=settings.DEBUG_CHAT_ID),
-        )
-    )
-
-    current_loop.close()
-    asyncio.set_event_loop(None)
-
-    if settings.RUN_PERIODIC_JOBS:
-        if not isinstance(application.job_queue, JobQueue):
-            logger.error("Application doesn't have job_queue")
-            return
-
-        for _pair, start_time in PAIR_START_TIME.items():
-            # Convert time to datetime, subtract 10 minutes, then back to time
-            temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011
-            temp_datetime -= datetime.timedelta(minutes=10)
-            adjusted_time = temp_datetime.time()
-
-            application.job_queue.run_daily(
-                commands.batch_pair_check,
-                time=datetime.time(
-                    hour=adjusted_time.hour,
-                    minute=adjusted_time.minute,
-                    tzinfo=pytz.timezone("Europe/Kyiv"),
-                ),
-                days=(1, 2, 3, 4, 5, 6),  # Monday-Saturday
-                job_kwargs={
-                    "misfire_grace_time": None,
-                },
-            )
 
     # Add choice between webhook and polling later
     if settings.WEBHOOK_URL is None:
