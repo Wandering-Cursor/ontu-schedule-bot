@@ -1,7 +1,7 @@
 import datetime
 import json
 import logging
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 
 import httpx
 import pydantic
@@ -47,6 +47,90 @@ def reraise_for_status(response: httpx.Response) -> None:
         ) from e
 
 
+def _parse_bulk_schedule_record(
+    data: dict[str, list[dict | None]],
+) -> dict[str, list[DaySchedule | None]]:
+    return {
+        key: [DaySchedule.model_validate(item) if item is not None else None for item in value]
+        for key, value in data.items()
+    }
+
+
+def _prepare_bulk_buffer(
+    buffer: str,
+    chunk: str,
+    *,
+    array_started: bool,
+) -> tuple[str, bool]:
+    if not chunk:
+        return buffer, array_started
+
+    buffer += chunk
+
+    if array_started:
+        return buffer, True
+
+    buffer = buffer.lstrip()
+    if not buffer:
+        return buffer, False
+
+    if buffer[0] != "[":
+        raise ValueError("bulk_schedule response must be a JSON array")
+
+    return buffer[1:], True
+
+
+def _consume_array_separators(buffer: str) -> str:
+    buffer = buffer.lstrip()
+
+    while buffer.startswith(","):
+        buffer = buffer[1:].lstrip()
+
+    return buffer
+
+
+def _decode_next_bulk_payload(
+    decoder: json.JSONDecoder,
+    buffer: str,
+) -> tuple[object | None, str, bool]:
+    buffer = _consume_array_separators(buffer)
+
+    if not buffer:
+        return None, buffer, False
+
+    if buffer[0] == "]":
+        return None, buffer[1:], True
+
+    try:
+        payload, consumed = decoder.raw_decode(buffer)
+    except json.JSONDecodeError:
+        # Need more bytes for a complete JSON value.
+        return None, buffer, False
+
+    return payload, buffer[consumed:], False
+
+
+def _iter_bulk_payload_records(
+    payload: object,
+) -> Generator[dict[str, list[DaySchedule | None]], None, None]:
+    if isinstance(payload, dict):
+        yield _parse_bulk_schedule_record(payload)
+        return
+
+    if isinstance(payload, list):
+        for item in payload:
+            if not isinstance(item, dict):
+                logger.warning(
+                    "Unexpected bulk item type in array payload: %s",
+                    type(item),
+                )
+                continue
+            yield _parse_bulk_schedule_record(item)
+        return
+
+    logger.warning("Unexpected bulk payload type: %s", type(payload))
+
+
 class AdminClient:
     def __init__(self) -> None:
         self.api_url = settings.API_URL
@@ -57,6 +141,17 @@ class AdminClient:
         )
 
         self.client = httpx.Client(
+            auth=self.api_auth,
+            base_url=str(self.api_url),
+            timeout=httpx.Timeout(
+                30.0,
+            ),
+            headers={
+                "Content-Type": "application/json",
+            },
+        )
+
+        self.async_client = httpx.AsyncClient(
             auth=self.api_auth,
             base_url=str(self.api_url),
             timeout=httpx.Timeout(
@@ -187,42 +282,57 @@ class AdminClient:
 
         return Subscription.model_validate(response.json())
 
-    def bulk_schedule(
+    async def bulk_schedule(  # noqa: C901
         self,
-    ) -> Generator[dict[str, list[DaySchedule | None]], None, None]:
-        with self.client.stream(
+    ) -> AsyncGenerator[dict[str, list[DaySchedule | None]], None]:
+        async with self.async_client.stream(
             method="GET",
             url="/chat/bulk/schedule",
             timeout=httpx.Timeout(600.0),
         ) as response:
-            for chunk in response.iter_bytes():
-                if chunk.startswith(b",\n"):
-                    chunk = chunk[2:]  # noqa: PLW2901
-                if chunk.endswith(b","):
-                    chunk = chunk[:-1]  # noqa: PLW2901
+            decoder = json.JSONDecoder()
+            buffer = ""
+            array_started = False
+            array_finished = False
 
-                if chunk.find(b']},\n{"') != -1:
-                    chunk = b"[" + chunk + b"]"  # noqa: PLW2901
+            async for chunk in response.aiter_text():
+                buffer, array_started = _prepare_bulk_buffer(
+                    buffer,
+                    chunk,
+                    array_started=array_started,
+                )
 
-                if chunk.endswith(b"]]"):
-                    chunk = chunk[:-1]  # noqa: PLW2901
-
-                try:
-                    data = json.loads(chunk)
-                except json.JSONDecodeError as e:
-                    logger.warning("Failed to decode chunk: %s; chunk: %r", e, chunk)
+                if not array_started:
                     continue
-                if not isinstance(data, list):
-                    data: list[dict] = [data]
 
-                for item in data:
-                    yield {
-                        key: [
-                            DaySchedule.model_validate(item) if item is not None else None
-                            for item in value
-                        ]
-                        for key, value in item.items()
-                    }
+                while True:
+                    payload, buffer, reached_array_end = _decode_next_bulk_payload(
+                        decoder,
+                        buffer,
+                    )
+
+                    if reached_array_end:
+                        array_finished = True
+                        break
+
+                    if payload is None:
+                        break
+
+                    for record in _iter_bulk_payload_records(payload):
+                        yield record
+
+                if array_finished:
+                    break
+
+            if not array_started:
+                logger.warning("bulk_schedule_async response was empty")
+            elif not array_finished:
+                logger.warning("bulk_schedule_async response ended before JSON array was closed")
+
+            if array_finished and buffer.strip():
+                logger.warning(
+                    f"bulk_schedule_async response contained trailing data: {buffer[:256]!r}"
+                )
 
     def schedule_tomorrow(self, chat_id: str) -> list[DaySchedule | None]:
         response = self.client.get(
