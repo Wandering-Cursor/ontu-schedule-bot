@@ -381,6 +381,27 @@ async def remove_subscription_items(
     )
 
 
+async def remove_subscription_item_query_response(
+    update: "Update",
+) -> None:
+    # Proportions and text pairs for random choice
+    # Yes, I'm a DELTARUNE fan <3
+    removal_responses = (
+        (95, "Запис видалено."),
+        (3, "Erase complete."),
+        (2, "IT WAS AS IF IT WAS NEVER THERE AT ALL."),
+        (1, "VERY INTERESTING."),
+    )
+
+    await processing_callback_query(
+        update=update,
+        text=random.choices(
+            [response for _, response in removal_responses],
+            weights=[weight for weight, _ in removal_responses],
+        )[0],
+    )
+
+
 async def add_subscription_group(
     update: "Update",
     faculties: list["Faculty"],

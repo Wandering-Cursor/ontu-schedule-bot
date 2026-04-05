@@ -6,7 +6,6 @@ import datetime
 import html
 import json
 import logging
-import random
 import time
 import traceback
 from uuid import UUID
@@ -284,21 +283,8 @@ async def remove_subscription_item(
     else:
         raise RuntimeError("Unsupported item type")
 
-    # Proportions and text pairs for random choice
-    # Yes, I'm a DELTARUNE fan <3
-    removal_responses = (
-        (95, "Запис видалено."),
-        (3, "Erase complete."),
-        (2, "IT WAS AS IF IT WAS NEVER THERE AT ALL."),
-        (1, "VERY INTERESTING."),
-    )
-
-    await messages.processing_callback_query(
+    await messages.remove_subscription_item_query_response(
         update=update,
-        text=random.choices(
-            [response for _, response in removal_responses],
-            weights=[weight for weight, _ in removal_responses],
-        )[0],
     )
 
     await messages.remove_subscription_items(
