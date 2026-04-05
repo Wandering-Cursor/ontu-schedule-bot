@@ -102,7 +102,6 @@ async def start_command(
 
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     client = AdminClient()
@@ -152,7 +151,6 @@ async def manage_subscription(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     await messages.manage_subscription(
@@ -169,7 +167,6 @@ async def manage_subscription_groups(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     chat = await get_chat_info(update=update)
@@ -191,7 +188,6 @@ async def manage_subscription_teachers(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     chat = await get_chat_info(update=update)
@@ -213,7 +209,6 @@ async def remove_subscription_items(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     if not update.callback_query or not update.callback_query.data:
@@ -249,7 +244,6 @@ async def remove_subscription_item(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     if not update.callback_query or not update.callback_query.data:
@@ -306,7 +300,6 @@ async def add_subscription_group(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     client = get_current_client()
@@ -331,7 +324,6 @@ async def add_subscription_teacher(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     client = get_current_client()
@@ -353,7 +345,6 @@ async def select_faculty(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     query = update.callback_query
@@ -404,7 +395,6 @@ async def select_department(
     """
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     query = update.callback_query
@@ -452,7 +442,6 @@ async def add_subscription_item(
 ) -> None:
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     query = update.callback_query
@@ -529,7 +518,6 @@ async def get_today_schedule(
 
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     telegram_chat = update.effective_chat
@@ -551,7 +539,6 @@ async def get_tomorrow_schedule(
 
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     telegram_chat = update.effective_chat
@@ -579,7 +566,6 @@ async def next_pair(  # noqa: C901
     """  # noqa: E501
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     telegram_chat = update.effective_chat
@@ -662,7 +648,6 @@ async def get_week_schedule(
 
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     telegram_chat = update.effective_chat
@@ -712,7 +697,6 @@ async def get_pair_details(
 
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     query = update.callback_query
@@ -788,7 +772,6 @@ async def get_schedule(
 
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     query = update.callback_query
@@ -953,7 +936,6 @@ async def toggle_subscription(
     """Toggles subscription on/off"""
     await messages.processing_update(
         update=update,
-        answer_callback_query=False,
     )
 
     chat = await get_chat_info(update=update)

@@ -23,7 +23,7 @@ from ontu_schedule_bot.third_party.admin.schemas import (
 logger = logging.getLogger(__name__)
 
 
-async def processing_callback_query(
+async def answer_callback_query(
     update: Update,
     text: str = "Запит опрацьовано",
 ) -> None:
@@ -35,17 +35,12 @@ async def processing_callback_query(
 
 async def processing_update(
     update: "Update",
-    text: str = "Будь-ласка, зачекайте...",
-    answer_callback_query: bool = True,
 ) -> None:
     chat = update.effective_chat
     if chat is None:
         return
 
     await chat.send_chat_action(action="typing")
-
-    if answer_callback_query and update.callback_query:
-        await processing_callback_query(update=update, text=text)
 
 
 async def edit_or_reply(
@@ -86,7 +81,7 @@ async def edit_or_reply(
 
             if answer_callback_query_text:
                 try:
-                    await processing_callback_query(
+                    await answer_callback_query(
                         update=update,
                         text=answer_callback_query_text,
                     )
@@ -393,7 +388,7 @@ async def remove_subscription_item_query_response(
         (1, "VERY INTERESTING."),
     )
 
-    await processing_callback_query(
+    await answer_callback_query(
         update=update,
         text=random.choices(
             [response for _, response in removal_responses],
@@ -872,8 +867,7 @@ async def noop_response(
         "А хай йому грець, знову нічого не робить!",  # noqa: RUF001
     ]
 
-    await processing_update(
+    await answer_callback_query(
         update=update,
         text=random.choice(responses),
-        answer_callback_query=False,
     )
