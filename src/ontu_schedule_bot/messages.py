@@ -1,6 +1,10 @@
 import datetime
+import json
+import logging
 import random
+import traceback
 
+import telegram
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 
 from ontu_schedule_bot import utils
@@ -16,10 +20,23 @@ from ontu_schedule_bot.third_party.admin.schemas import (
     WeekSchedule,
 )
 
+logger = logging.getLogger(__name__)
+
+
+async def processing_callback_query(
+    update: Update,
+    text: str = "Запит опрацьовано",
+) -> None:
+    if update.callback_query is None:
+        return
+
+    await update.callback_query.answer(text=text)
+
 
 async def processing_update(
     update: "Update",
     text: str = "Будь-ласка, зачекайте...",
+    answer_callback_query: bool = True,
 ) -> None:
     chat = update.effective_chat
     if chat is None:
@@ -27,26 +44,63 @@ async def processing_update(
 
     await chat.send_chat_action(action="typing")
 
-    if update.callback_query:
-        await update.callback_query.answer(text=text)
+    if answer_callback_query and update.callback_query:
+        await processing_callback_query(update=update, text=text)
 
 
 async def edit_or_reply(
     update: "Update",
     text: str,
     reply_markup: InlineKeyboardMarkup | None = None,
+    *,
+    answer_callback_query_text: str | None = "Запит опрацьовано",
 ) -> Message:
     if query := update.callback_query:  # noqa: SIM102
         if (update_message := query.message) and update_message.is_accessible:
             assert isinstance(update_message, Message)
 
-            result = await update_message.edit_text(
-                text=text,
-                reply_markup=reply_markup,
-            )
+            try:
+                result = await update_message.edit_text(
+                    text=text,
+                    reply_markup=reply_markup,
+                )
+            except telegram.error.BadRequest as e:
+                if "Message is not modified" in str(e):
+                    # Update already processed (likely a double-click)
+                    # Or another instance of bot has already updated the message
+                    logger.warning(
+                        json.dumps(
+                            {
+                                "msg": "Message is not modified error while editing message",
+                                "update_id": update.update_id,
+                                "e": traceback.format_exc(),
+                            },
+                            default=repr,
+                        )
+                    )
+                    return update_message
+                raise
 
             if isinstance(result, bool):
                 raise RuntimeError("Edited a non-bot message")
+
+            if answer_callback_query_text:
+                try:
+                    await processing_callback_query(
+                        update=update,
+                        text=answer_callback_query_text,
+                    )
+                except telegram.error.TelegramError:
+                    logger.error(
+                        json.dumps(
+                            {
+                                "msg": "Failed to answer callback query. Ignoring as indirect call",
+                                "update_id": update.update_id,
+                                "e": traceback.format_exc(),
+                            },
+                            default=repr,
+                        )
+                    )
 
             return result
 
@@ -123,6 +177,7 @@ async def start_command(
         update=update,
         text=message_text,
         reply_markup=InlineKeyboardMarkup(keyboard),
+        answer_callback_query_text="Головне меню відкрито",
     )
 
 
@@ -587,6 +642,7 @@ async def send_pair_details(
         update=update,
         text=text,
         reply_markup=keyboard_markup,
+        answer_callback_query_text="Деталі заняття завантажено",
     )
 
 
@@ -680,6 +736,7 @@ async def send_day_schedule(
         update=update,
         text=text,
         reply_markup=InlineKeyboardMarkup(keyboard),
+        answer_callback_query_text="Розклад дня завантажено",
     )
 
 
@@ -693,6 +750,7 @@ async def send_no_classes_message(
     await edit_or_reply(
         update=update,
         text=text,
+        answer_callback_query_text="Розклад дня відсутній",
     )
 
 
@@ -708,6 +766,7 @@ async def send_schedule_not_found_message(
     await edit_or_reply(
         update=update,
         text=text,
+        answer_callback_query_text="Розклад не знайдено",
     )
 
 
@@ -725,6 +784,7 @@ async def entity_not_found_message(
     await edit_or_reply(
         update=update,
         text=text,
+        answer_callback_query_text=f"{entity.capitalize()} не знайдено",
     )
 
 
@@ -776,6 +836,7 @@ async def send_week_schedule(
         update=update,
         text=f"Оберіть день тижня, щоб побачити розклад.\nДля {week_schedule.for_entity}",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        answer_callback_query_text="Розклад тижня завантажено",
     )
 
 
@@ -793,4 +854,5 @@ async def noop_response(
     await processing_update(
         update=update,
         text=random.choice(responses),
+        answer_callback_query=False,
     )

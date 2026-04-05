@@ -1,10 +1,12 @@
 """This module contains all the commands bot may execute"""
 
+import asyncio
 import contextvars
 import datetime
 import html
 import json
 import logging
+import random
 import time
 import traceback
 from uuid import UUID
@@ -33,6 +35,7 @@ from ontu_schedule_bot.utils import PAIR_START_TIME
 
 current_client = contextvars.ContextVar("current_client")
 current_update = contextvars.ContextVar("update")
+batch_pair_check_lock = asyncio.Lock()
 logger = logging.getLogger(__name__)
 
 
@@ -98,7 +101,10 @@ async def start_command(
     if not telegram_chat or not message:
         return
 
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     client = AdminClient()
 
@@ -145,7 +151,10 @@ async def manage_subscription(
     - Proceed to choose between adding and removing subscription items;
     - Finally, choose specific groups/teachers to add/remove.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     await messages.manage_subscription(
         update=update,
@@ -159,7 +168,10 @@ async def manage_subscription_groups(
     """
     Continues the process of updating the subscription by focusing on groups only.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     chat = await get_chat_info(update=update)
 
@@ -178,7 +190,10 @@ async def manage_subscription_teachers(
     """
     Continues the process of updating the subscription by focusing on teachers only.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     chat = await get_chat_info(update=update)
 
@@ -197,7 +212,10 @@ async def remove_subscription_items(
     """
     Continues the process of updating the subscription by focusing on removing items.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     if not update.callback_query or not update.callback_query.data:
         raise ValueError("remove_subscription_items is designed for callbacks")
@@ -230,7 +248,10 @@ async def remove_subscription_item(
     """
     Finalizes the process of updating the subscription by removing specific item.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     if not update.callback_query or not update.callback_query.data:
         raise ValueError("remove_subscription_item is designed for callbacks")
@@ -263,6 +284,23 @@ async def remove_subscription_item(
     else:
         raise RuntimeError("Unsupported item type")
 
+    # Proportions and text pairs for random choice
+    # Yes, I'm a DELTARUNE fan <3
+    removal_responses = (
+        (95, "Запис видалено."),
+        (3, "Erase complete."),
+        (2, "IT WAS AS IF IT WAS NEVER THERE AT ALL."),
+        (1, "VERY INTERESTING."),
+    )
+
+    await messages.processing_callback_query(
+        update=update,
+        text=random.choices(
+            [response for _, response in removal_responses],
+            weights=[weight for weight, _ in removal_responses],
+        )[0],
+    )
+
     await messages.remove_subscription_items(
         update=update,
         subscription=subscription,
@@ -280,7 +318,10 @@ async def add_subscription_group(
     First users have to select a faculty, then a group within that faculty.
     Since there might be quite a lot of groups, pagination is implemented.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     client = get_current_client()
 
@@ -302,7 +343,10 @@ async def add_subscription_teacher(
     First users have to select a department, then a teacher within that department.
     Since there might be quite a lot of teachers, pagination is implemented.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     client = get_current_client()
 
@@ -321,7 +365,10 @@ async def select_faculty(
     """
     Continues the process of adding a group to the subscription by selecting a faculty.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     query = update.callback_query
     if not query or not query.message or not query.data:
@@ -369,7 +416,10 @@ async def select_department(
     """
     Continues the process of adding a teacher to the subscription by selecting a department.
     """
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     query = update.callback_query
     if not query or not query.message or not query.data:
@@ -414,7 +464,10 @@ async def add_subscription_item(
     update: "Update",
     _context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     query = update.callback_query
     if not query or not query.message or not query.data:
@@ -488,7 +541,10 @@ async def get_today_schedule(
     """Gets today's schedule from admin service"""
     current_update.set(update)
 
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     telegram_chat = update.effective_chat
     if not telegram_chat:
@@ -507,7 +563,10 @@ async def get_tomorrow_schedule(
     """Gets tomorrow's schedule from admin service"""
     current_update.set(update)
 
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     telegram_chat = update.effective_chat
     if not telegram_chat:
@@ -532,7 +591,10 @@ async def next_pair(  # noqa: C901
     If current time is not past the start of the last pair, performs check for current day.
     Should only send the next upcoming pair. (If no more pairs today, search in tomorrow's schedule)
     """  # noqa: E501
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     telegram_chat = update.effective_chat
     if not telegram_chat:
@@ -612,7 +674,10 @@ async def get_week_schedule(
 
     current_update.set(update)
 
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     telegram_chat = update.effective_chat
     if not telegram_chat:
@@ -659,7 +724,10 @@ async def get_pair_details(
 ) -> None:
     current_update.set(update)
 
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     query = update.callback_query
     if not query or not query.message or not query.data:
@@ -732,7 +800,10 @@ async def get_schedule(
 ) -> None:
     current_update.set(update)
 
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     query = update.callback_query
     if not query or not query.message or not query.data:
@@ -843,36 +914,50 @@ async def process_record(
 async def batch_pair_check(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
-    start_time = time.time()
+    if batch_pair_check_lock.locked():
+        logger.error("Skip batch pair check: previous worker is still running")
+        return
 
-    client = get_current_client()
+    async with batch_pair_check_lock:
+        start_time = time.time()
 
-    batch_generator = client.bulk_schedule()
+        now = utils.current_time_in_kiev()
+        client = AdminClient()
 
-    now = utils.current_time_in_kiev()
-
-    for record in batch_generator:
         try:
-            await process_record(record=record, now=now, context=context)
+            async for record in client.bulk_schedule():
+                try:
+                    await process_record(record=record, now=now, context=context)
+                except Exception as e:
+                    logger.error(f"Error processing record: {e}", exc_info=True)
+                    await send_message_to_debug_chat(
+                        context=context,
+                        message=get_error_message_text(
+                            error=e,
+                            context=context,
+                            base_error_message="Error processing record in batch pair check",
+                        ),
+                    )
         except Exception as e:
-            logger.error(f"Error processing record: {e}", exc_info=True)
+            logger.error("Error collecting bulk schedule", exc_info=True)
             await send_message_to_debug_chat(
                 context=context,
                 message=get_error_message_text(
                     error=e,
                     context=context,
-                    base_error_message="Error processing record in batch pair check",
+                    base_error_message="Error collecting bulk schedule in batch pair check",
                 ),
             )
+            return
 
-    end_time = time.time()
+        end_time = time.time()
 
-    duration = end_time - start_time
+        duration = end_time - start_time
 
-    await send_message_to_debug_chat(
-        context=context,
-        message=f"Batch pair check completed in {round(duration, 2)} seconds.",
-    )
+        await send_message_to_debug_chat(
+            context=context,
+            message=f"Batch pair check completed in {round(duration, 2)} seconds.",
+        )
 
 
 async def toggle_subscription(
@@ -880,7 +965,10 @@ async def toggle_subscription(
     _context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Toggles subscription on/off"""
-    await messages.processing_update(update=update)
+    await messages.processing_update(
+        update=update,
+        answer_callback_query=False,
+    )
 
     chat = await get_chat_info(update=update)
 

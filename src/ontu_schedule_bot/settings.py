@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     WEBHOOK_URL: pydantic.HttpUrl | None = None
     RUN_PERIODIC_JOBS: bool = True
-    DEBUG: bool = False
+    DEBUG: bool = True
 
 
 settings = Settings()  # pyright: ignore[reportCallIssue]
