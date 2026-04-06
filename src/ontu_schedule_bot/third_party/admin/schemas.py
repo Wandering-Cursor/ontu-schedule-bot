@@ -131,9 +131,15 @@ class ScheduleEntity(Schema):
     full_name: str | None
     external_id: str | None = pydantic.Field(description="As seen in the ONTU Rozklad system.")
 
-    short_id: str = pydantic.Field(
+    original_short_id: str = pydantic.Field(
+        alias="short_id",
         description="Might be useful for quick checks. Note that uniqueness is not guaranteed.",
     )
+
+    @pydantic.computed_field()
+    @property
+    def short_id(self) -> str:
+        return f"{self.type.value[:1]}_{self.original_short_id}"
 
     @property
     def display_name(self) -> str:
