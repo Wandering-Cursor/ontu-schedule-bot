@@ -30,8 +30,6 @@ class Patterns(StrEnum):
 
     TOGGLE_SUBSCRIPTION = "toggle_subscription"
 
-    WEEK_SCHEDULE = "week_schedule"
-
     # Use parameters
     REMOVE_SUBSCRIPTION_ITEMS = "remove_subscription_items"
     REMOVE_ITEM = "ri"
@@ -41,6 +39,7 @@ class Patterns(StrEnum):
 
     ADD_SUBSCRIPTION_ITEM = "asi"
 
+    WEEK_SCHEDULE = "ws"
     GET_SCHEDULE = "gs"
     GET_PAIR_DETAILS = "gpd"
 
@@ -247,8 +246,8 @@ def get_schedule_pattern(callback_data: object) -> bool:
     return all(
         [
             callback_data[0] == Patterns.GET_SCHEDULE,
-            isinstance(callback_data[1], str),  # Date
-            isinstance(callback_data[2], str),  # Name of a group or a teacher
+            isinstance(callback_data[1], int),  # Date in ordinal format
+            isinstance(callback_data[2], str),  # Short ID of a group or a teacher
         ]
     )
 
@@ -266,8 +265,8 @@ def get_pair_details_pattern(callback_data: object) -> bool:
         [
             callback_data[0] == Patterns.GET_PAIR_DETAILS,
             isinstance(callback_data[1], int),  # Pair number
-            isinstance(callback_data[2], str),  # Date
-            isinstance(callback_data[3], str),  # Name of a group or a teacher
+            isinstance(callback_data[2], int),  # Date in ordinal format
+            isinstance(callback_data[3], str),  # Short ID of a group or a teacher
         ]
     )
 

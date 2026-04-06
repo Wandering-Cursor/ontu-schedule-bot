@@ -6,6 +6,7 @@ import traceback
 
 import telegram
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram.constants import ChatAction
 
 from ontu_schedule_bot import utils
 from ontu_schedule_bot.patterns import Patterns, SubscriptionItemType
@@ -40,7 +41,14 @@ async def processing_update(
     if chat is None:
         return
 
-    await chat.send_chat_action(action="typing")
+    message_thread_id = (
+        update.effective_message.message_thread_id if update.effective_message else None
+    )
+
+    await chat.send_chat_action(
+        action=ChatAction.TYPING,
+        message_thread_id=message_thread_id,
+    )
 
 
 async def edit_or_reply(
@@ -646,8 +654,8 @@ async def send_pair_details(
                 InlineKeyboardButton(
                     "Повернутися до розкладу 📅",
                     callback_data=Patterns.GET_SCHEDULE.with_args(
-                        day_schedule.date.isoformat(),
-                        day_schedule.for_entity,
+                        day_schedule.date.toordinal(),
+                        day_schedule.entity.short_id,
                     ),
                 )
             ]
@@ -689,8 +697,8 @@ async def send_pair_details_with_bot(
                 InlineKeyboardButton(
                     "Повернутися до розкладу 📅",
                     callback_data=Patterns.GET_SCHEDULE.with_args(
-                        day_schedule.date.isoformat(),
-                        day_schedule.for_entity,
+                        day_schedule.date.toordinal(),
+                        day_schedule.entity.short_id,
                     ),
                 )
             ]
@@ -713,7 +721,7 @@ async def send_day_schedule(
     """Gets day schedule from admin service"""
     text = (
         f"Розклад на {utils.get_weekday_name(day_schedule.date)} "
-        f"({day_schedule.date.strftime('%d.%m')}) для {day_schedule.for_entity}:\n\n"
+        f"({day_schedule.date.strftime('%d.%m')}) для {day_schedule.entity.display_name}:\n\n"
     )
 
     keyboard = []
@@ -731,8 +739,8 @@ async def send_day_schedule(
                     text=f"{pair.number}. {lesson.short_name}",
                     callback_data=Patterns.GET_PAIR_DETAILS.with_args(
                         pair.number,
-                        day_schedule.date.isoformat(),
-                        day_schedule.for_entity,
+                        day_schedule.date.toordinal(),
+                        day_schedule.entity.short_id,
                     ),
                 )
             )
@@ -743,7 +751,7 @@ async def send_day_schedule(
         [
             InlineKeyboardButton(
                 "Повернутися до розкладу тижня 📅",
-                callback_data=Patterns.WEEK_SCHEDULE.with_args(day_schedule.for_entity),
+                callback_data=Patterns.WEEK_SCHEDULE.with_args(day_schedule.entity.short_id),
             )
         ]
     )
@@ -841,8 +849,8 @@ async def send_week_schedule(
                 InlineKeyboardButton(
                     text=get_button_name(day_schedule),
                     callback_data=Patterns.GET_SCHEDULE.with_args(
-                        day_schedule.date,
-                        day_schedule.for_entity,
+                        day_schedule.date.toordinal(),
+                        day_schedule.entity.short_id,
                     ),
                 ),
             ]
@@ -850,7 +858,7 @@ async def send_week_schedule(
 
     await edit_or_reply(
         update=update,
-        text=f"Оберіть день тижня, щоб побачити розклад.\nДля {week_schedule.for_entity}",
+        text=f"Оберіть день тижня, щоб побачити розклад.\nДля {week_schedule.entity.display_name}",
         reply_markup=InlineKeyboardMarkup(keyboard),
         answer_callback_query_text="Розклад тижня завантажено",
     )
