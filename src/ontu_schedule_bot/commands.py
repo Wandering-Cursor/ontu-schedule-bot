@@ -25,9 +25,9 @@ from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.client import AdminClient
 from ontu_schedule_bot.third_party.admin.enums import Platform
 from ontu_schedule_bot.third_party.admin.schemas import (
+    BulkScheduleItem,
     Chat,
     CreateChatRequest,
-    DaySchedule,
     Subscription,
 )
 from ontu_schedule_bot.utils import PAIR_START_TIME
@@ -660,13 +660,13 @@ async def get_week_schedule(
         else None
     )
 
-    for_entity = None
+    short_id = None
     if (
         query_data
         and not isinstance(query_data, Patterns)
         and len(query_data) == get_week_with_entity_len
     ):
-        for_entity = str(query_data[1])
+        short_id = str(query_data[1])
 
     client = get_current_client()
 
@@ -680,7 +680,7 @@ async def get_week_schedule(
         if not item:
             continue
 
-        if for_entity and item.for_entity != for_entity:
+        if short_id and item.entity.short_id != short_id:
             continue
 
         await messages.send_week_schedule(
@@ -712,8 +712,8 @@ async def get_pair_details(
         raise ValueError("Not enough parameters in callback data for get_pair_details")
 
     pair_number = int(query_data[1])  # pyright: ignore[reportArgumentType]
-    day = datetime.date.fromisoformat(query_data[2])  # pyright: ignore[reportArgumentType]
-    for_entity = str(query_data[3])  # pyright: ignore[reportArgumentType]
+    day = datetime.date.fromordinal(query_data[2])  # pyright: ignore[reportArgumentType]
+    short_id = str(query_data[3])  # pyright: ignore[reportArgumentType]
 
     client = get_current_client()
 
@@ -730,7 +730,7 @@ async def get_pair_details(
         if not item:
             continue
 
-        if item.for_entity != for_entity:
+        if item.entity.short_id != short_id:
             continue
 
         day_schedule = item
@@ -746,7 +746,7 @@ async def get_pair_details(
                 "msg": "No schedule or pair found for the given data",
                 "chat_id": chat.platform_chat_id,
                 "date": day,
-                "for_entity": for_entity,
+                "short_id": short_id,
                 "pair_number": pair_number,
                 "schedules": day_schedules,
             }
@@ -786,8 +786,8 @@ async def get_schedule(
     if len(query_data) < 3:  # noqa: PLR2004
         raise ValueError("Not enough parameters in callback data for get_schedule")
 
-    date = datetime.date.fromisoformat(query_data[1])  # pyright: ignore[reportArgumentType]
-    for_entity = str(query_data[2])
+    date = datetime.date.fromordinal(query_data[1])  # pyright: ignore[reportArgumentType]
+    short_id = str(query_data[2])
 
     client = get_current_client()
 
@@ -803,7 +803,7 @@ async def get_schedule(
         if not item:
             continue
 
-        if item.for_entity == for_entity:
+        if item.entity.short_id == short_id:
             day_schedule = item
             break
 
@@ -813,7 +813,7 @@ async def get_schedule(
                 "msg": "No schedule found for the given date and entity",
                 "chat_id": chat.platform_chat_id,
                 "date": date,
-                "for_entity": for_entity,
+                "short_id": short_id,
                 "schedules": day_schedules,
             }
         )
@@ -837,47 +837,48 @@ async def manual_batch_pair_check(
 
 
 async def process_record(
-    record: dict[str, list[DaySchedule | None]],
+    record: BulkScheduleItem,
     now: datetime.datetime,
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
-    for chat_id, schedules in record.items():
-        message_thread_id = None
+    chat_id = record.platform_chat_id
+    schedules = record.schedules
 
-        if chat_id.find(":") != -1:
-            chat_id, message_thread_id = chat_id.split(":", 1)  # noqa: PLW2901
-            message_thread_id = int(message_thread_id)
+    message_thread_id = None
+    if chat_id.find(":") != -1:
+        chat_id, message_thread_id = chat_id.split(":", 1)
+        message_thread_id = int(message_thread_id)
 
-        for schedule in schedules:
-            if not schedule:
+    for schedule in schedules:
+        if not schedule:
+            continue
+
+        for pair in schedule.pairs:
+            pair_start_time = datetime.datetime.combine(
+                schedule.date,
+                PAIR_START_TIME.get(pair.number, datetime.time(hour=0, minute=0)),
+                tzinfo=now.tzinfo,
+            )
+
+            if pair_start_time < now:
                 continue
 
-            for pair in schedule.pairs:
-                pair_start_time = datetime.datetime.combine(
-                    schedule.date,
-                    PAIR_START_TIME.get(pair.number, datetime.time(hour=0, minute=0)),
-                    tzinfo=now.tzinfo,
-                )
-
-                if pair_start_time < now:
-                    continue
-
-                if pair.lessons:
-                    try:
-                        await messages.send_pair_details_with_bot(
-                            bot=context.bot,
-                            chat_id=chat_id,
-                            message_thread_id=message_thread_id,
-                            pair=pair,
-                            day_schedule=schedule,
-                        )
-                    except telegram.error.Forbidden as e:
-                        logger.warning(
-                            f"Cannot send message to chat {chat_id} "
-                            f"(message_thread_id={message_thread_id}): {e}",
-                        )
-                # Only send the next upcoming pair for each schedule
-                break
+            if pair.lessons:
+                try:
+                    await messages.send_pair_details_with_bot(
+                        bot=context.bot,
+                        chat_id=chat_id,
+                        message_thread_id=message_thread_id,
+                        pair=pair,
+                        day_schedule=schedule,
+                    )
+                except telegram.error.Forbidden as e:
+                    logger.warning(
+                        f"Cannot send message to chat {chat_id} "
+                        f"(message_thread_id={message_thread_id}): {e}",
+                    )
+            # Only send the next upcoming pair for each schedule
+            break
 
 
 async def batch_pair_check(
@@ -1004,7 +1005,8 @@ async def send_messages_for_campaign(
         chat_id = recipient.platform_chat_id
 
         if ":" in chat_id:
-            chat_id, message_thread_id = chat_id.split(":")
+            chat_id, message_thread_id = chat_id.split(":", 1)
+            message_thread_id = int(message_thread_id)
 
         try:
             await context.bot.send_message(

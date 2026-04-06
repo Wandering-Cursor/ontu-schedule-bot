@@ -3,7 +3,7 @@ from typing import Literal, TypeVar
 
 import pydantic
 
-from ontu_schedule_bot.third_party.admin.enums import Platform
+from ontu_schedule_bot.third_party.admin.enums import Platform, ScheduleEntityType
 
 
 class Schema(pydantic.BaseModel):
@@ -122,6 +122,24 @@ class Subscription(Schema):
     teachers: list[Teacher]
 
 
+class ScheduleEntity(Schema):
+    type: ScheduleEntityType
+
+    uuid: pydantic.UUID4
+
+    short_name: str
+    full_name: str | None
+    external_id: str | None = pydantic.Field(description="As seen in the ONTU Rozklad system.")
+
+    short_id: str = pydantic.Field(
+        description="Might be useful for quick checks. Note that uniqueness is not guaranteed.",
+    )
+
+    @property
+    def display_name(self) -> str:
+        return self.full_name or self.short_name
+
+
 class Lesson(Schema):
     short_name: str = pydantic.Field(examples=["ПНМ (Онлайн лек.)"])
     full_name: str = pydantic.Field(examples=["Професійно-наукова мова"])
@@ -171,6 +189,7 @@ class Pair(Schema):
 
 class DaySchedule(Schema):
     for_entity: str
+    entity: ScheduleEntity
 
     date: datetime.date
 
@@ -179,8 +198,14 @@ class DaySchedule(Schema):
 
 class WeekSchedule(Schema):
     for_entity: str
+    entity: ScheduleEntity
 
     days: list[DaySchedule]
+
+
+class BulkScheduleItem(Schema):
+    platform_chat_id: str
+    schedules: list[DaySchedule | None]
 
 
 T = TypeVar("T", bound=Schema)

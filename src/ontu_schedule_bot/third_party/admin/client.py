@@ -9,6 +9,7 @@ import pydantic
 from ontu_schedule_bot.errors import SubscriptionNotFoundError
 from ontu_schedule_bot.settings import settings
 from ontu_schedule_bot.third_party.admin.schemas import (
+    BulkScheduleItem,
     Chat,
     CreateChatRequest,
     DaySchedule,
@@ -282,57 +283,25 @@ class AdminClient:
 
         return Subscription.model_validate(response.json())
 
-    async def bulk_schedule(  # noqa: C901
-        self,
-    ) -> AsyncGenerator[dict[str, list[DaySchedule | None]], None]:
+    async def bulk_schedule(self) -> AsyncGenerator[BulkScheduleItem, None]:
         async with self.async_client.stream(
             method="GET",
-            url="/chat/bulk/schedule",
+            url="/chat/bulk/schedule-sse",
             timeout=httpx.Timeout(600.0),
         ) as response:
-            decoder = json.JSONDecoder()
-            buffer = ""
-            array_started = False
-            array_finished = False
+            if response.status_code != httpx.codes.OK:
+                reraise_for_status(response)
 
-            async for chunk in response.aiter_text():
-                buffer, array_started = _prepare_bulk_buffer(
-                    buffer,
-                    chunk,
-                    array_started=array_started,
-                )
-
-                if not array_started:
-                    continue
-
-                while True:
-                    payload, buffer, reached_array_end = _decode_next_bulk_payload(
-                        decoder,
-                        buffer,
-                    )
-
-                    if reached_array_end:
-                        array_finished = True
-                        break
-
-                    if payload is None:
-                        break
-
-                    for record in _iter_bulk_payload_records(payload):
-                        yield record
-
-                if array_finished:
-                    break
-
-            if not array_started:
-                logger.warning("bulk_schedule_async response was empty")
-            elif not array_finished:
-                logger.warning("bulk_schedule_async response ended before JSON array was closed")
-
-            if array_finished and buffer.strip():
-                logger.warning(
-                    f"bulk_schedule_async response contained trailing data: {buffer[:256]!r}"
-                )
+            async for line in response.aiter_lines():
+                if line.startswith("data:"):
+                    data_str = line[len("data:") :].strip()
+                    if data_str:
+                        try:
+                            yield BulkScheduleItem.model_validate_json(data_str)
+                        except json.JSONDecodeError as e:
+                            logger.warning(
+                                f"Failed to decode JSON from bulk_schedule SSE data: {e}; data was: {data_str[:256]!r}"  # noqa: E501
+                            )
 
     def schedule_tomorrow(self, chat_id: str) -> list[DaySchedule | None]:
         response = self.client.get(
