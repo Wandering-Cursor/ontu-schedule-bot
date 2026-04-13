@@ -8,7 +8,7 @@ dependencies = [
     "python-telegram-bot[callback-data,rate-limiter,job-queue,webhooks]>=22.5,<23.0",
     "httpx>=0.28.1,<0.29.0",
     "pydantic-settings>=2.11.0",
-    "pytz>=2026.1",
+    "pytz>=2026.1.post1",
 ]
 
 [dependency-groups]
