@@ -5,7 +5,7 @@ description = "A Telegram Bot to get ONTU schedule in your chats"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "python-telegram-bot[callback-data,rate-limiter,job-queue,webhooks]>=22.5,<23.0",
+    "python-telegram-bot[callback-data,rate-limiter,job-queue,webhooks]>=22.7,<23.0",
     "httpx>=0.28.1,<0.29.0",
     "pydantic-settings>=2.11.0",
     "pytz>=2026.1",
