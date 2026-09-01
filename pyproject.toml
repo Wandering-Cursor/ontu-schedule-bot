@@ -1,6 +1,6 @@
 [project]
 name = "ontu-schedule-bot"
-version = "1.5.2"
+version = "1.5.3"
 description = "A Telegram Bot to get ONTU schedule in your chats"
 readme = "README.md"
 requires-python = ">=3.12"
