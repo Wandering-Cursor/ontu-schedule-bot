@@ -899,7 +899,7 @@ async def batch_pair_check(
                 try:
                     await process_record(record=record, now=now, context=context)
                 except Exception as e:
-                    logger.error(f"Error processing record: {e}", exc_info=True)
+                    logger.exception(f"Error processing record: {record}")
                     await send_message_to_debug_chat(
                         context=context,
                         message=get_error_message_text(
@@ -909,7 +909,7 @@ async def batch_pair_check(
                         ),
                     )
         except Exception as e:
-            logger.error("Error collecting bulk schedule", exc_info=True)
+            logger.exception("Error collecting bulk schedule")
             await send_message_to_debug_chat(
                 context=context,
                 message=get_error_message_text(
@@ -1108,7 +1108,8 @@ async def error_handler(
     message_detail = (
         "Виникла помилка при обробці вашого запиту.\nСпробуйте його повторити, однак, "  # noqa: RUF001
         "якщо це не допоможе, то адміністратори вже повідомлені і працюють над усуненням "  # noqa: RUF001
-        "проблем.\nВибачте за незручності.\n\n"  # noqa: RUF001
+        "проблем.\nВибачте за незручності.\nP.S. Ознайомтесь з новинами у"  # noqa: RUF001
+        "@ontu_schedule_bot_channel, можливо ця проблема пояснена там.\n\n"
     )
 
     if (
@@ -1166,7 +1167,7 @@ async def post_init(
             logger.error("Application doesn't have job_queue")
             return
 
-        for _pair, start_time in PAIR_START_TIME.items():
+        for start_time in PAIR_START_TIME.values():
             # Convert time to datetime, subtract 10 minutes, then back to time
             temp_datetime = datetime.datetime.combine(datetime.date.today(), start_time)  # noqa: DTZ011
             temp_datetime -= datetime.timedelta(minutes=10)
