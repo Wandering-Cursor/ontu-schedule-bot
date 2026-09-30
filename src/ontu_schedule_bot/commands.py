@@ -840,7 +840,7 @@ async def process_record(
     record: BulkScheduleItem,
     now: datetime.datetime,
     context: ContextTypes.DEFAULT_TYPE,
-) -> None:
+) -> tuple[bool, Exception | None]:
     chat_id = record.platform_chat_id
     schedules = record.schedules
 
@@ -876,14 +876,28 @@ async def process_record(
                     logger.warning(
                         f"Cannot send message to chat {chat_id} "
                         f"(message_thread_id={message_thread_id}): {e}",
+                        exc_info=e,
                     )
+                    return False, e
+                except telegram.error.BadRequest as e:
+                    if "Chat not found" in str(e):
+                        logger.warning(
+                            f"Cannot send message to chat {chat_id} "
+                            f"(message_thread_id={message_thread_id}): {e}",
+                            exc_info=e,
+                        )
+                        return False, e
+                    raise
             # Only send the next upcoming pair for each schedule
             break
+
+    return True, None
 
 
 async def batch_pair_check(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
+    errors = {}
     if batch_pair_check_lock.locked():
         logger.error("Skip batch pair check: previous worker is still running")
         return
@@ -897,8 +911,11 @@ async def batch_pair_check(
         try:
             async for record in client.bulk_schedule():
                 try:
-                    await process_record(record=record, now=now, context=context)
+                    sent, error = await process_record(record=record, now=now, context=context)
+                    if not sent:
+                        errors[record.platform_chat_id] = str(error)
                 except Exception as e:
+                    errors[record.platform_chat_id] = str(e)
                     logger.exception(f"Error processing record: {record}")
                     await send_message_to_debug_chat(
                         context=context,
@@ -924,9 +941,13 @@ async def batch_pair_check(
 
         duration = end_time - start_time
 
+        debug_message = f"Batch pair check finished in {round(duration, 2)} seconds."
+        if errors:
+            errors_as_string = "\n".join(f"{key}: {value}" for key, value in errors.items())
+            debug_message += f"\nErrors occurred during batch pair check:\n{errors_as_string}"
         await send_message_to_debug_chat(
             context=context,
-            message=f"Batch pair check completed in {round(duration, 2)} seconds.",
+            message=debug_message,
         )
 
 

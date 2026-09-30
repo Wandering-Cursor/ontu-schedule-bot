@@ -11,7 +11,8 @@
 			"extensions": [
 				"ms-azuretools.vscode-docker",
 				"ms-vscode-remote.remote-containers",
-				"charliermarsh.ruff"
+				"charliermarsh.ruff",
+				"ms-python.python"
 			],
 			"settings": {
 				"[python]": {
